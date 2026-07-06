@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ZoneBadge } from "./ZoneBadge";
+import { ZoneBadge } from "../ui/ZoneBadge";
 
 interface AssessmentDetailsProps {
   assessment: any;

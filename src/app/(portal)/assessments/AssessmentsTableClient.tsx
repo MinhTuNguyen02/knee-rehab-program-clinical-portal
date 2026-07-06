@@ -2,18 +2,18 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ZoneFilter } from "@/components/ZoneFilter";
-import { ZoneBadge } from "@/components/ZoneBadge";
-import { Modal } from "@/components/Modal";
-import { AssessmentDetails } from "@/components/AssessmentDetails";
-import { DataTable } from "@/components/DataTable";
+import { ZoneFilter } from "@/components/management/ZoneFilter";
+import { ZoneBadge } from "@/components/ui/ZoneBadge";
+import { Modal } from "@/components/ui/Modal";
+import { AssessmentDetails } from "@/components/management/AssessmentDetails";
+import { DataTable } from "@/components/data-display/DataTable";
 
 export function AssessmentsTableClient({ initialData, meta, currentPage, currentZone, currentSource }: any) {
   const router = useRouter();
 
   const [sortField, setSortField] = useState<string>("createdAt");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  
+
   const [selectedAssessment, setSelectedAssessment] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -86,10 +86,10 @@ export function AssessmentsTableClient({ initialData, meta, currentPage, current
             { key: "score", label: "Score", sortable: true, className: "font-medium text-slate-900 font-mono" },
             { key: "zone", label: "Zone", sortable: true, render: (a) => <ZoneBadge zone={a.zone} /> },
             { key: "source", label: "Source", sortable: false, className: "capitalize", render: (a) => a.source?.replace('_', ' ') || "N/A" },
-            { 
-              key: "patient", 
-              label: "Linked Patient", 
-              sortable: true, 
+            {
+              key: "patient",
+              label: "Linked Patient",
+              sortable: true,
               render: (a) => a.patient ? (
                 <button
                   onClick={(e) => {
@@ -121,9 +121,9 @@ export function AssessmentsTableClient({ initialData, meta, currentPage, current
         />
       </div>
 
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         title="Assessment Details"
       >
         <AssessmentDetails assessment={selectedAssessment} />

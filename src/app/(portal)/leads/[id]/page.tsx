@@ -1,6 +1,6 @@
 import { fetchWithAuth } from "@/lib/api";
 import { getToken } from "@/lib/auth";
-import { ZoneBadge } from "@/components/ZoneBadge";
+import { ZoneBadge } from "@/components/ui/ZoneBadge";
 import { LeadAssessmentsClient } from "@/components/LeadAssessmentsClient";
 import Link from "next/link";
 import { redirect } from "next/navigation";

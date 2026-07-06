@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { SearchBar } from "@/components/SearchBar";
-import { ZoneFilter } from "@/components/ZoneFilter";
-import { ZoneBadge } from "@/components/ZoneBadge";
-import { DataTable } from "@/components/DataTable";
+import { SearchBar } from "@/components/management/SearchBar";
+import { ZoneFilter } from "@/components/management/ZoneFilter";
+import { ZoneBadge } from "@/components/ui/ZoneBadge";
+import { DataTable } from "@/components/data-display/DataTable";
 
 export function LeadsTableClient({ initialData, meta, currentPage, currentZone }: any) {
   const router = useRouter();

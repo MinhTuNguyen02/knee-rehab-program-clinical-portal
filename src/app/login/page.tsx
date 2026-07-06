@@ -55,7 +55,7 @@ export default function LoginPage() {
               {error}
             </div>
           )}
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="email">
@@ -70,7 +70,7 @@ export default function LoginPage() {
                   type="email"
                   required
                   className="block w-full rounded-lg border-0 py-2.5 pl-10 pr-3 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white dark:ring-slate-700 sm:text-sm sm:leading-6"
-                  placeholder="admin@clinic.com"
+                  placeholder="admin@krps.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
