@@ -78,6 +78,7 @@ export function LeadsTableClient({ initialData, meta, currentPage, currentZone }
             { key: "name", label: "Name", sortable: true, className: "font-medium text-slate-900 dark:text-white", render: (lead) => `${lead.firstName} ${lead.lastName}` },
             { key: "email", label: "Email", sortable: true },
             { key: "zone", label: "Zone", sortable: true, render: (lead) => <ZoneBadge zone={lead.assessments?.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]?.zone} /> },
+            // { key: "score", label: "Score", sortable: false, className: "font-mono font-medium text-slate-900 dark:text-slate-100", render: (lead) => lead.assessments?.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]?.score || "N/A" },
             { key: "kneeSide", label: "Knee Side", sortable: false, className: "capitalize", render: (lead) => ({ "R": "Right", "L": "Left", "B": "Both" } as Record<string, string>)[lead.kneeSide] || lead.kneeSide || "Unknown" },
             { key: "createdAt", label: "Date", sortable: true, render: (lead) => new Date(lead.createdAt).toLocaleDateString() },
           ]}

@@ -14,7 +14,7 @@ export function LeadAssessmentsClient({ assessments }: LeadAssessmentsClientProp
   const [selectedAssessment, setSelectedAssessment] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 20;
 
   const totalCount = assessments?.length || 0;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);

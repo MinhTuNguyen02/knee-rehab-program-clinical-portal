@@ -1,6 +1,7 @@
 import { fetchWithAuth } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { KPICard } from "@/components/KPICard";
+import { DashboardChartsClient } from "@/components/DashboardChartsClient";
 import { RecentAssessmentsClient } from "@/components/RecentAssessmentsClient";
 import { ChartLineUp, Users, PresentationChart, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
@@ -62,29 +63,7 @@ export default async function DashboardPage() {
           />
         </div>
 
-        {/* Zone Distribution Bar */}
-        <div className="overflow-hidden rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
-          <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-4">Assessment Zone Distribution</h3>
-          <div className="flex h-4 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-            <div style={{ width: `${(totalGreen / totalSubmissions) * 100}%` }} className="bg-emerald-500 transition-all"></div>
-            <div style={{ width: `${(totalAmber / totalSubmissions) * 100}%` }} className="bg-amber-500 transition-all"></div>
-            <div style={{ width: `${(totalRed / totalSubmissions) * 100}%` }} className="bg-red-500 transition-all"></div>
-          </div>
-          <div className="mt-4 flex gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-emerald-500"></span>
-              <span className="text-slate-600 dark:text-slate-400">Green ({totalGreen})</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-amber-500"></span>
-              <span className="text-slate-600 dark:text-slate-400">Amber ({totalAmber})</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-red-500"></span>
-              <span className="text-slate-600 dark:text-slate-400">Red ({totalRed})</span>
-            </div>
-          </div>
-        </div>
+        <DashboardChartsClient stats={stats} />
 
         {/* Recent Assessments */}
         <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">

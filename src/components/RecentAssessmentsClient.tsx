@@ -14,7 +14,7 @@ export function RecentAssessmentsClient({ recentAssessments }: RecentAssessments
   const [selectedAssessment, setSelectedAssessment] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 5;
+  const PAGE_SIZE = 20;
 
   const totalCount = recentAssessments?.length || 0;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);

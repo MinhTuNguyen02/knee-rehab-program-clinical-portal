@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ZoneBadge } from "./ZoneBadge";
 
 interface AssessmentDetailsProps {
@@ -48,7 +49,7 @@ export function AssessmentDetails({ assessment }: AssessmentDetailsProps) {
           </div>
           <div className="flex flex-col">
             <dt className="text-xs font-medium text-slate-500">Date Completed</dt>
-            <dd className="text-sm font-medium text-slate-900">{new Date(assessment.createdAt).toLocaleString()}</dd>
+            <dd className="text-sm font-medium text-slate-900">{new Date(assessment.createdAt).toLocaleDateString()}</dd>
           </div>
         </dl>
       </div>
@@ -58,9 +59,11 @@ export function AssessmentDetails({ assessment }: AssessmentDetailsProps) {
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Linked Patient</h3>
           <div className="bg-primary/5 border border-primary/10 p-4 rounded-xl flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-primary-hover">
-                {assessment.patient.firstName} {assessment.patient.lastName}
-              </span>
+              <Link href={`/leads/${assessment.patient.id}`}>
+                <span className="text-sm font-bold text-primary-hover">
+                  {assessment.patient.firstName} {assessment.patient.lastName}
+                </span>
+              </Link>
               <span className="text-xs text-slate-500">{assessment.patient.email}</span>
             </div>
           </div>
