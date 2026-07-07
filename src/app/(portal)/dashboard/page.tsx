@@ -16,10 +16,12 @@ export default async function DashboardPage() {
   }
 
   try {
-    const [stats, recentAssessments] = await Promise.all([
+    const [statsRes, recentAssessments] = await Promise.all([
       fetchWithAuth("/dashboard/stats", token, { next: { revalidate: 0 } }),
       fetchWithAuth("/assessments?limit=5", token, { next: { revalidate: 0 } })
     ]);
+
+    const stats = statsRes.data || statsRes;
 
     const conversionRate = stats.totalSubmissions > 0
       ? Math.round((stats.totalOptedIn / stats.totalSubmissions) * 100)

@@ -13,10 +13,13 @@ export async function POST(request: Request) {
       body: JSON.stringify(body),
     });
 
-    const data = await res.json();
+    const rawData = await res.json();
+    const data = rawData.data || rawData; // Fallback to rawData if data is not wrapped
 
     if (!res.ok) {
-      return NextResponse.json({ message: data.message || "Login failed" }, { status: res.status });
+      // In the new format, error message might be under rawData.error.message
+      const errorMessage = rawData.error?.message || rawData.message || "Login failed";
+      return NextResponse.json({ message: errorMessage }, { status: res.status });
     }
 
     // Set HTTP-only cookie
