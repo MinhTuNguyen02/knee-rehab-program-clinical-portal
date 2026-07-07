@@ -26,6 +26,11 @@ export default function Loading() {
         <div className="h-[400px] animate-pulse rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900" />
         <div className="h-[400px] animate-pulse rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900" />
       </div>
+
+      {/* Table Skeleton */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="h-[300px] w-full animate-pulse bg-slate-50 dark:bg-slate-900/50" />
+      </div>
     </div>
   );
 }

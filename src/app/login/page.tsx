@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LockKey, User } from "@phosphor-icons/react";
+import { LockKey, User, Eye, EyeClosed } from "@phosphor-icons/react";
+import Link from "next/link";
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -24,8 +26,8 @@ export default function LoginPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        const errorMsg = Array.isArray(data.message) 
-          ? data.message.join(', ') 
+        const errorMsg = Array.isArray(data.message)
+          ? data.message.join(', ')
           : data.message;
         throw new Error(errorMsg || "Invalid credentials");
       }
@@ -76,24 +78,38 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="password">
-                Password
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="password">
+                  Password
+                </label>
+
+              </div>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                   <LockKey size={18} />
                 </div>
                 <input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
-                  className="block w-full rounded-lg border-0 py-2.5 pl-10 pr-3 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white dark:ring-slate-700 sm:text-sm sm:leading-6"
+                  className="block w-full rounded-lg border-0 py-2.5 pl-10 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white dark:ring-slate-700 sm:text-sm sm:leading-6"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <Eye size={18} /> : <EyeClosed size={18} />}
+                </button>
               </div>
             </div>
+            <Link href="/forgot-password" className="text-sm font-medium text-primary hover:text-primary-hover dark:text-primary dark:hover:text-primary-hover">
+              Forgot password?
+            </Link>
           </div>
 
           <button
