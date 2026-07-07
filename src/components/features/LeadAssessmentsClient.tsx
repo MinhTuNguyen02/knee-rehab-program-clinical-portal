@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ZoneBadge } from "@/components/ui/ZoneBadge";
+import { formatDate } from "@/lib/utils";
 import { Modal } from "@/components/ui/Modal";
 import { AssessmentDetails } from "@/components/management/AssessmentDetails";
 import { DataTable } from "@/components/data-display/DataTable";
@@ -29,7 +30,7 @@ export function LeadAssessmentsClient({ assessments }: LeadAssessmentsClientProp
           { key: "functionScore", label: "Function", sortable: false, render: (a) => a.functionScore !== null && a.functionScore !== undefined ? a.functionScore : "N/A" },
           { key: "score", label: "Score", sortable: false, className: "font-medium text-slate-900 font-mono" },
           { key: "zone", label: "Zone", sortable: false, render: (a) => <ZoneBadge zone={a.zone} /> },
-          { key: "createdAt", label: "Date", sortable: false, render: (a) => new Date(a.createdAt).toLocaleDateString() },
+          { key: "createdAt", label: "Date", sortable: false, render: (a) => formatDate(a.createdAt) },
         ]}
         data={paginatedData}
         onRowClick={(assessment) => { setSelectedAssessment(assessment); setIsModalOpen(true); }}

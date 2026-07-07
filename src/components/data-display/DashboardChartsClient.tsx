@@ -1,9 +1,11 @@
 "use client";
 
+import { useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
+import { formatDate } from '@/lib/utils';
 
 export function DashboardChartsClient({ stats }: { stats: any }) {
   const pieData = [
@@ -13,10 +15,7 @@ export function DashboardChartsClient({ stats }: { stats: any }) {
   ].filter(d => d.value > 0);
 
   const formatDateLocal = (date: Date) => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    return formatDate(date);
   };
 
   const recentTimestamps = stats.recentTimestamps || [];
@@ -52,8 +51,7 @@ export function DashboardChartsClient({ stats }: { stats: any }) {
               <CartesianGrid stroke="#e2e8f0" strokeDasharray="5 5" vertical={false} />
               <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => {
                 if (!val) return '';
-                const parts = val.split('-');
-                return parts.length === 3 ? `${parts[1]}/${parts[2]}` : val;
+                return val.replace(/\s\d{4}$/, ''); // "12 Jun 2026" -> "12 Jun"
               }} />
               <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
               <RechartsTooltip 

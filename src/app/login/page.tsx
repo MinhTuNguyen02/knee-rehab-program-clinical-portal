@@ -24,7 +24,10 @@ export default function LoginPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || "Invalid credentials");
+        const errorMsg = Array.isArray(data.message) 
+          ? data.message.join(', ') 
+          : data.message;
+        throw new Error(errorMsg || "Invalid credentials");
       }
 
       toast.success("Welcome back!");

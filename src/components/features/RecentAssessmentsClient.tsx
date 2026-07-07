@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ZoneBadge } from "@/components/ui/ZoneBadge";
 import { Modal } from "@/components/ui/Modal";
 import { AssessmentDetails } from "@/components/management/AssessmentDetails";
+import { formatDate } from "@/lib/utils";
 import { DataTable } from "@/components/data-display/DataTable";
 
 interface RecentAssessmentsClientProps {
@@ -28,7 +29,7 @@ export function RecentAssessmentsClient({ recentAssessments }: RecentAssessments
           { key: "score", label: "Score", sortable: false, className: "font-mono text-slate-500 dark:text-slate-400" },
           { key: "zone", label: "Zone", sortable: false, render: (a) => <ZoneBadge zone={a.zone} /> },
           { key: "patientId", label: "Type", sortable: false, render: (a) => a.patientId ? "Opted In" : "Anonymous" },
-          { key: "createdAt", label: "Date", sortable: false, render: (a) => new Date(a.createdAt).toLocaleDateString() },
+          { key: "createdAt", label: "Date", sortable: false, render: (a) => formatDate(a.createdAt) },
         ]}
         data={paginatedData}
         onRowClick={(assessment) => { setSelectedAssessment(assessment); setIsModalOpen(true); }}

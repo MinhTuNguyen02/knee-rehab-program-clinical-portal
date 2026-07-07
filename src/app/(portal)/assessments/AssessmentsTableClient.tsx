@@ -7,6 +7,7 @@ import { ZoneBadge } from "@/components/ui/ZoneBadge";
 import { Modal } from "@/components/ui/Modal";
 import { AssessmentDetails } from "@/components/management/AssessmentDetails";
 import { DataTable } from "@/components/data-display/DataTable";
+import { formatDate } from "@/lib/utils";
 
 export function AssessmentsTableClient({ initialData, meta, currentPage, currentZone, currentSource }: any) {
   const router = useRouter();
@@ -104,7 +105,7 @@ export function AssessmentsTableClient({ initialData, meta, currentPage, current
                 <span className="text-slate-400 italic">Anonymous</span>
               )
             },
-            { key: "createdAt", label: "Date", sortable: true, render: (a) => new Date(a.createdAt).toLocaleDateString() },
+            { key: "createdAt", label: "Date", sortable: true, render: (a) => formatDate(a.createdAt) },
           ]}
           data={sortedData}
           sortField={sortField}

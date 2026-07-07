@@ -4,6 +4,7 @@ import { ZoneBadge } from "@/components/ui/ZoneBadge";
 import { LeadAssessmentsClient } from "@/components/features/LeadAssessmentsClient";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { formatDate } from "@/lib/utils";
 import { ArrowLeft, UserCircle, EnvelopeSimple, Phone, CalendarBlank, GenderIntersex, WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 
 export default async function LeadDetailPage(props: { params: Promise<{ id: string }> }) {
@@ -49,7 +50,7 @@ export default async function LeadDetailPage(props: { params: Promise<{ id: stri
           </h1>
           <p className="mt-1 text-sm text-slate-500 flex items-center gap-2">
             <CalendarBlank size={16} />
-            Added on {new Date(lead.createdAt).toLocaleDateString()}
+            Added on {formatDate(lead.createdAt)}
           </p>
         </div>
       </div>

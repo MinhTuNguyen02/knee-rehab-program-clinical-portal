@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ZoneBadge } from "../ui/ZoneBadge";
+import { ZoneBadge } from "@/components/ui/ZoneBadge";
+import { formatDate } from "@/lib/utils";
 
 interface AssessmentDetailsProps {
   assessment: any;
@@ -36,7 +37,7 @@ export function AssessmentDetails({ assessment }: AssessmentDetailsProps) {
         <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Metadata</h3>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
           <div className="flex flex-col">
-            <dt className="text-xs font-medium text-slate-500">Display ID</dt>
+            <dt className="text-xs font-medium text-slate-500">ID</dt>
             <dd className="text-sm font-mono text-slate-900">{assessment.displayId}</dd>
           </div>
           <div className="flex flex-col">
@@ -49,7 +50,7 @@ export function AssessmentDetails({ assessment }: AssessmentDetailsProps) {
           </div>
           <div className="flex flex-col">
             <dt className="text-xs font-medium text-slate-500">Date Completed</dt>
-            <dd className="text-sm font-medium text-slate-900">{new Date(assessment.createdAt).toLocaleDateString()}</dd>
+            <dd className="text-sm font-medium text-slate-900">{formatDate(assessment.createdAt)}</dd>
           </div>
         </dl>
       </div>

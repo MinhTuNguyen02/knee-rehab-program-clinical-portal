@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { WarningCircle } from "@phosphor-icons/react";
+import { useEffect, useTransition } from "react";
+import { WarningCircle, CircleNotch } from "@phosphor-icons/react";
 
 export default function GlobalError({
   error,
@@ -10,6 +10,8 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const [isPending, startTransition] = useTransition();
+
   useEffect(() => {
     // Log the error to an error reporting service
     console.error(error);
@@ -34,10 +36,18 @@ export default function GlobalError({
             </div>
 
             <button
-              onClick={() => reset()}
-              className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              onClick={() => startTransition(() => reset())}
+              disabled={isPending}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Try again
+              {isPending ? (
+                <>
+                  <CircleNotch className="h-4 w-4 animate-spin" />
+                  Retrying...
+                </>
+              ) : (
+                "Try again"
+              )}
             </button>
           </div>
         </div>

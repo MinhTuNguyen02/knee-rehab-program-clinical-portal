@@ -6,6 +6,7 @@ import { SearchBar } from "@/components/management/SearchBar";
 import { ZoneFilter } from "@/components/management/ZoneFilter";
 import { ZoneBadge } from "@/components/ui/ZoneBadge";
 import { DataTable } from "@/components/data-display/DataTable";
+import { formatDate } from "@/lib/utils";
 
 export function LeadsTableClient({ initialData, meta, currentPage, currentZone }: any) {
   const router = useRouter();
@@ -80,7 +81,7 @@ export function LeadsTableClient({ initialData, meta, currentPage, currentZone }
             { key: "zone", label: "Zone", sortable: true, render: (lead) => <ZoneBadge zone={lead.assessments?.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]?.zone} /> },
             { key: "score", label: "Score", sortable: false, className: "font-mono font-medium text-slate-900 dark:text-slate-100", render: (lead) => lead.assessments?.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]?.score || "N/A" },
             { key: "kneeSide", label: "Knee Side", sortable: false, className: "capitalize", render: (lead) => ({ "R": "Right", "L": "Left", "B": "Both" } as Record<string, string>)[lead.kneeSide] || lead.kneeSide || "Unknown" },
-            { key: "createdAt", label: "Date", sortable: true, render: (lead) => new Date(lead.createdAt).toLocaleDateString() },
+            { key: "createdAt", label: "Date", sortable: true, render: (lead) => formatDate(lead.createdAt) },
           ]}
           data={filteredAndSortedData}
           sortField={sortField}

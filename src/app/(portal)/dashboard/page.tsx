@@ -8,6 +8,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
+  // throw new Error("Lỗi test từ hệ thống!");
   const token = await getToken();
 
   if (!token) {
