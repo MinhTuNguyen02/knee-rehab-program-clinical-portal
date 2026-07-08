@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LockKey, User, Eye, EyeClosed } from "@phosphor-icons/react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { adminLogin } from "@/app/actions/admin-auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -13,33 +14,31 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+
+
+  useEffect(() => {
+    if (searchParams.get("reason") === "expired") {
+      toast.error("Your session has expired. Please sign in again.");
+    }
+  }, [searchParams]);
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+    const formData = new FormData(e.currentTarget);
 
-      if (!res.ok) {
-        const data = await res.json();
-        const errorMsg = Array.isArray(data.message)
-          ? data.message.join(', ')
-          : data.message;
-        throw new Error(errorMsg || "Invalid credentials");
-      }
-
-      toast.success("Welcome back!");
-      router.push("/dashboard");
-      router.refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Login failed");
-    } finally {
+    startTransition(async () => {
+      const result = await adminLogin(formData);
       setIsLoading(false);
-    }
+      if (result?.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Welcome back!");
+      }
+    });
   };
 
   return (
@@ -67,6 +66,7 @@ export default function LoginPage() {
                 </div>
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   required
                   className="block w-full rounded-lg border-0 py-2.5 pl-10 pr-3 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white dark:ring-slate-700 sm:text-sm sm:leading-6"
@@ -90,6 +90,7 @@ export default function LoginPage() {
                 </div>
                 <input
                   id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   required
                   className="block w-full rounded-lg border-0 py-2.5 pl-10 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white dark:ring-slate-700 sm:text-sm sm:leading-6"
@@ -114,10 +115,10 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isPending}
             className="flex w-full justify-center rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-70 disabled:cursor-not-allowed transition-colors active:scale-[0.98]"
           >
-            {isLoading ? "Signing in..." : "Sign in"}
+            {isLoading || isPending ? "Signing in..." : "Sign in"}
           </button>
         </form>
       </div>

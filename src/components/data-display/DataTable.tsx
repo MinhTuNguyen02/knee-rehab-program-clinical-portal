@@ -21,10 +21,11 @@ interface DataTableProps<T = any> {
   onRowClick?: (item: T) => void;
   emptyStateMessage?: ReactNode;
   pagination?: {
-    currentPage: number;
-    totalPages: number;
-    totalCount: number;
-    onPageChange: (page: number) => void;
+    hasMore: boolean;
+    onNext: () => void;
+    onPrev: () => void;
+    canGoPrev: boolean;
+    isPending?: boolean;
   };
 }
 
@@ -96,10 +97,11 @@ export function DataTable<T = any>({
       )}
       {pagination && data && data.length > 0 && (
         <Pagination
-          currentPage={pagination.currentPage}
-          totalPages={pagination.totalPages}
-          totalCount={pagination.totalCount}
-          onPageChange={pagination.onPageChange}
+          hasMore={pagination.hasMore}
+          onNext={pagination.onNext}
+          onPrev={pagination.onPrev}
+          canGoPrev={pagination.canGoPrev}
+          isPending={pagination.isPending}
         />
       )}
     </div>

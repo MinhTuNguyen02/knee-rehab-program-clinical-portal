@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { SearchBar } from "@/components/management/SearchBar";
 import { ZoneFilter } from "@/components/management/ZoneFilter";
@@ -8,24 +8,55 @@ import { ZoneBadge } from "@/components/ui/ZoneBadge";
 import { DataTable } from "@/components/data-display/DataTable";
 import { formatDate } from "@/lib/utils";
 
-export function LeadsTableClient({ initialData, meta, currentPage, currentZone }: any) {
+export function LeadsTableClient({ initialData, meta, currentPage, currentZone, initialCursor }: any) {
   const router = useRouter();
 
+  const [isPending, startTransition] = useTransition();
+
+  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<string>("createdAt");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
+  const currentAfter = initialCursor || "";
+
   const handleZoneChange = (zone: string) => {
+    setCursorHistory([]);
     const query = new URLSearchParams();
     if (zone) query.append("zone", zone);
-    router.push(`/leads?${query.toString()}`);
+
+    startTransition(() => {
+      router.push(`/leads?${query.toString()}`);
+    });
   };
 
-  const handlePageChange = (page: number) => {
+  const handleNextPage = () => {
+    if (!meta.hasMore || !meta.endCursor) return;
+
     const query = new URLSearchParams();
-    query.append("page", page.toString());
+    query.append("after", meta.endCursor);
     if (currentZone) query.append("zone", currentZone);
-    router.push(`/leads?${query.toString()}`);
+
+    setCursorHistory((prev) => [...prev, currentAfter]);
+    startTransition(() => {
+      router.push(`/leads?${query.toString()}`);
+    });
+  };
+
+  const handlePrevPage = () => {
+    if (cursorHistory.length === 0) return;
+
+    const newHistory = [...cursorHistory];
+    const prevCursor = newHistory.pop() || "";
+
+    const query = new URLSearchParams();
+    if (prevCursor) query.append("after", prevCursor);
+    if (currentZone) query.append("zone", currentZone);
+
+    setCursorHistory(newHistory);
+    startTransition(() => {
+      router.push(`/leads?${query.toString()}`);
+    });
   };
 
   const handleSort = (field: string) => {
@@ -38,7 +69,7 @@ export function LeadsTableClient({ initialData, meta, currentPage, currentZone }
   };
 
   const filteredAndSortedData = useMemo(() => {
-    let result = [...initialData];
+    let result = [...(initialData || [])];
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -90,10 +121,11 @@ export function LeadsTableClient({ initialData, meta, currentPage, currentZone }
           onRowClick={(lead) => router.push(`/leads/${lead.id}`)}
           emptyStateMessage="No leads found matching your criteria."
           pagination={{
-            currentPage: currentPage,
-            totalPages: meta.totalPages,
-            totalCount: meta.total,
-            onPageChange: handlePageChange
+            hasMore: meta.hasMore,
+            canGoPrev: cursorHistory.length > 0,
+            onNext: handleNextPage,
+            onPrev: handlePrevPage,
+            isPending: isPending,
           }}
         />
       </div>

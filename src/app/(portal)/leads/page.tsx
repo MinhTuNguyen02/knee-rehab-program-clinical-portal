@@ -3,21 +3,25 @@ import { getToken } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { LeadsTableClient } from "./LeadsTableClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function LeadsPage(props: { searchParams: Promise<{ [key: string]: string | undefined }> }) {
   const token = await getToken();
   if (!token) redirect("/login");
 
   const searchParams = await props.searchParams;
-  const page = searchParams.page || "1";
+  const after = searchParams.after || "";
   const zone = searchParams.zone || "";
 
-  let data = { data: [], meta: { total: 0, totalPages: 1 } };
-  
+  let data = { data: [], meta: { hasMore: false, endCursor: null } };
+
+
   try {
-    const query = new URLSearchParams({ page, limit: "20" });
+    const query = new URLSearchParams({ limit: "20" });
+    if (after) query.append("after", after);
     if (zone) query.append("zone", zone);
-    
-    data = await fetchWithAuth(`/leads?${query.toString()}`, token, { next: { revalidate: 0 } });
+
+    data = await fetchWithAuth(`/leads?${query.toString()}`, token, { cache: "no-store" });
   } catch (error) {
     console.error("Failed to fetch leads", error);
   }
@@ -31,11 +35,11 @@ export default async function LeadsPage(props: { searchParams: Promise<{ [key: s
         </p>
       </div>
 
-      <LeadsTableClient 
-        initialData={data.data || []} 
-        meta={data.meta || { total: 0, totalPages: 1 }}
-        currentPage={parseInt(page)}
+      <LeadsTableClient
+        initialData={Array.isArray(data) ? data : (data?.data || [])}
+        meta={data.meta || { hasMore: false, endCursor: null }}
         currentZone={zone}
+        initialCursor={after}
       />
     </div>
   );

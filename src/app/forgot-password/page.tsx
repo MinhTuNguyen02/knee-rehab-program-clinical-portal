@@ -6,39 +6,31 @@ import { EnvelopeSimple, ArrowLeft } from "@phosphor-icons/react";
 import toast from "react-hot-toast";
 import Link from "next/link";
 
+import { adminForgotPassword } from "@/app/actions/admin-auth";
+import { useTransition } from "react";
+
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
-    try {
-      const res = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+    const formData = new FormData(e.currentTarget);
 
-      if (!res.ok) {
-        const data = await res.json();
-        const errorMsg = Array.isArray(data.message)
-          ? data.message.join(", ")
-          : data.message;
-        throw new Error(errorMsg || "Failed to process request");
-      }
-
-      setIsSuccess(true);
-      toast.success("Check your email for reset instructions.");
-    } catch (err: any) {
-      // For security, even if it fails due to "user not found", we should typically show success to avoid email enumeration.
-      // But we still catch network errors.
-      toast.error(err.message || "Failed to process request");
-    } finally {
+    startTransition(async () => {
+      const result = await adminForgotPassword(formData);
       setIsLoading(false);
-    }
+      if (result?.error) {
+        toast.error(result.error);
+      } else {
+        setIsSuccess(true);
+        toast.success("Check your email for reset instructions.");
+      }
+    });
   };
 
   return (
@@ -70,6 +62,7 @@ export default function ForgotPasswordPage() {
                 </div>
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   required
                   className="block w-full rounded-lg border-0 py-2.5 pl-10 pr-3 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white dark:ring-slate-700 sm:text-sm sm:leading-6"
@@ -82,10 +75,10 @@ export default function ForgotPasswordPage() {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isPending}
               className="flex w-full justify-center rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-70 disabled:cursor-not-allowed transition-colors active:scale-[0.98]"
             >
-              {isLoading ? "Sending..." : "Send Reset Link"}
+              {isLoading || isPending ? "Sending..." : "Send Reset Link"}
             </button>
           </form>
         ) : (

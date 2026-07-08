@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useTransition, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ZoneFilter } from "@/components/management/ZoneFilter";
 import { ZoneBadge } from "@/components/ui/ZoneBadge";
 import { Modal } from "@/components/ui/Modal";
@@ -9,28 +9,57 @@ import { AssessmentDetails } from "@/components/management/AssessmentDetails";
 import { DataTable } from "@/components/data-display/DataTable";
 import { formatDate } from "@/lib/utils";
 
-export function AssessmentsTableClient({ initialData, meta, currentPage, currentZone, currentSource }: any) {
+export function AssessmentsTableClient({ initialData, meta, currentZone, initialCursor }: any) {
   const router = useRouter();
 
+  const [isPending, startTransition] = useTransition();
+
+  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
   const [sortField, setSortField] = useState<string>("createdAt");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   const [selectedAssessment, setSelectedAssessment] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleFilterChange = (zone: string, source: string) => {
+  const currentAfter = initialCursor || "";
+
+  const handleFilterChange = (zone: string) => {
+    setCursorHistory([]);
     const query = new URLSearchParams();
     if (zone) query.append("zone", zone);
-    if (source) query.append("source", source);
-    router.push(`/assessments?${query.toString()}`);
+
+    startTransition(() => {
+      router.push(`/assessments?${query.toString()}`);
+    });
   };
 
-  const handlePageChange = (page: number) => {
+  const handleNextPage = () => {
+    if (!meta.hasMore || !meta.endCursor) return;
+
     const query = new URLSearchParams();
-    query.append("page", page.toString());
+    query.append("after", meta.endCursor);
     if (currentZone) query.append("zone", currentZone);
-    if (currentSource) query.append("source", currentSource);
-    router.push(`/assessments?${query.toString()}`);
+
+    setCursorHistory((prev) => [...prev, currentAfter]);
+    startTransition(() => {
+      router.push(`/assessments?${query.toString()}`);
+    });
+  };
+
+  const handlePrevPage = () => {
+    if (cursorHistory.length === 0) return;
+
+    const newHistory = [...cursorHistory];
+    const prevCursor = newHistory.pop() || "";
+
+    const query = new URLSearchParams();
+    if (prevCursor) query.append("after", prevCursor);
+    if (currentZone) query.append("zone", currentZone);
+
+    setCursorHistory(newHistory);
+    startTransition(() => {
+      router.push(`/assessments?${query.toString()}`);
+    });
   };
 
   const handleSort = (field: string) => {
@@ -43,7 +72,7 @@ export function AssessmentsTableClient({ initialData, meta, currentPage, current
   };
 
   const sortedData = useMemo(() => {
-    let result = [...initialData];
+    let result = [...(initialData || [])];
 
     result.sort((a, b) => {
       let valA = a[sortField];
@@ -66,17 +95,7 @@ export function AssessmentsTableClient({ initialData, meta, currentPage, current
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="flex gap-4">
-          <ZoneFilter value={currentZone} onChange={(val) => handleFilterChange(val, currentSource)} />
-          <select
-            value={currentSource}
-            onChange={(e) => handleFilterChange(currentZone, e.target.value)}
-            className="block w-40 rounded-md border-0 py-2 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6"
-          >
-            <option value="">All Sources</option>
-            <option value="WEBSITE">Website</option>
-            <option value="QR_CODE">QR Code</option>
-            <option value="EMAIL">Email</option>
-          </select>
+          <ZoneFilter value={currentZone} onChange={(val) => handleFilterChange(val)} />
         </div>
       </div>
 
@@ -105,7 +124,7 @@ export function AssessmentsTableClient({ initialData, meta, currentPage, current
                 <span className="text-slate-400 italic">Anonymous</span>
               )
             },
-            { key: "createdAt", label: "Date", sortable: true, render: (a) => formatDate(a.createdAt) },
+            { key: "createdAt", label: "Date", sortable: true, render: (a) => <span suppressHydrationWarning>{formatDate(a.createdAt)}</span> },
           ]}
           data={sortedData}
           sortField={sortField}
@@ -114,10 +133,11 @@ export function AssessmentsTableClient({ initialData, meta, currentPage, current
           onRowClick={(assessment) => { setSelectedAssessment(assessment); setIsModalOpen(true); }}
           emptyStateMessage="No assessments found matching your criteria."
           pagination={{
-            currentPage: currentPage,
-            totalPages: meta.totalPages,
-            totalCount: meta.total,
-            onPageChange: handlePageChange
+            hasMore: meta.hasMore,
+            canGoPrev: cursorHistory.length > 0,
+            onNext: handleNextPage,
+            onPrev: handlePrevPage,
+            isPending: isPending,
           }}
         />
       </div>

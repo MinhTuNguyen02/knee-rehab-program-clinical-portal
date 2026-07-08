@@ -3,23 +3,26 @@ import { getToken } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { AssessmentsTableClient } from "./AssessmentsTableClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function AssessmentsPage(props: { searchParams: Promise<{ [key: string]: string | undefined }> }) {
   const token = await getToken();
   if (!token) redirect("/login");
 
   const searchParams = await props.searchParams;
-  const page = searchParams.page || "1";
+  const after = searchParams.after || "";
   const zone = searchParams.zone || "";
-  const source = searchParams.source || "";
 
-  let data = { data: [], meta: { total: 0, totalPages: 1 } };
+  console.log(">>> [SERVER] AssessmentsPage render:", { after, zone });
+
+  let data = { data: [], meta: { hasMore: false, endCursor: null } };
 
   try {
-    const query = new URLSearchParams({ page, limit: "20" });
+    const query = new URLSearchParams({ limit: "20" });
+    if (after) query.append("after", after);
     if (zone) query.append("zone", zone);
-    if (source) query.append("source", source);
 
-    data = await fetchWithAuth(`/assessments?${query.toString()}`, token, { next: { revalidate: 0 } });
+    data = await fetchWithAuth(`/assessments?${query.toString()}`, token, { cache: "no-store" });
   } catch (error) {
     console.error("Failed to fetch assessments", error);
   }
@@ -34,11 +37,10 @@ export default async function AssessmentsPage(props: { searchParams: Promise<{ [
       </div>
 
       <AssessmentsTableClient
-        initialData={data.data || []}
-        meta={data.meta || { total: 0, totalPages: 1 }}
-        currentPage={parseInt(page)}
+        initialData={Array.isArray(data) ? data : (data?.data || [])}
+        meta={data?.meta || { hasMore: false, endCursor: null }}
         currentZone={zone}
-        currentSource={source}
+        initialCursor={after}
       />
     </div>
   );

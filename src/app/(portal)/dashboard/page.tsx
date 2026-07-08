@@ -76,7 +76,7 @@ export default async function DashboardPage() {
               View all
             </Link>
           </div>
-          <RecentAssessmentsClient recentAssessments={recentAssessments.data} />
+          <RecentAssessmentsClient recentAssessments={recentAssessments?.data || recentAssessments} />
         </div>
       </div>
     );

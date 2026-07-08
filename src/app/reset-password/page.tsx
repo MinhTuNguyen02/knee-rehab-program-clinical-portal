@@ -6,6 +6,9 @@ import { LockKey, Eye, EyeClosed, CircleNotch } from "@phosphor-icons/react";
 import toast from "react-hot-toast";
 import Link from "next/link";
 
+import { adminResetPassword } from "@/app/actions/admin-auth";
+import { useTransition } from "react";
+
 function ResetPasswordForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -16,8 +19,9 @@ function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const [isPending, startTransition] = useTransition();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!token) {
       toast.error("Invalid or missing reset token.");
@@ -31,31 +35,21 @@ function ResetPasswordForm() {
 
     setIsLoading(true);
 
-    try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, newPassword: password }),
-      });
+    const formData = new FormData(e.currentTarget);
 
-      if (!res.ok) {
-        const data = await res.json();
-        const errorMsg = Array.isArray(data.message)
-          ? data.message.join(", ")
-          : data.message;
-        throw new Error(errorMsg || "Failed to reset password");
-      }
-
-      setIsSuccess(true);
-      toast.success("Password reset successfully!");
-      setTimeout(() => {
-        router.push("/login");
-      }, 2000);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to reset password");
-    } finally {
+    startTransition(async () => {
+      const result = await adminResetPassword(formData);
       setIsLoading(false);
-    }
+      if (result?.error) {
+        toast.error(result.error);
+      } else {
+        setIsSuccess(true);
+        toast.success("Password reset successfully!");
+        setTimeout(() => {
+          router.push("/login");
+        }, 2000);
+      }
+    });
   };
 
   if (!token) {
@@ -104,6 +98,7 @@ function ResetPasswordForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        <input type="hidden" name="token" value={token || ""} />
         <div className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="password">
@@ -115,6 +110,7 @@ function ResetPasswordForm() {
               </div>
               <input
                 id="password"
+                name="newPassword"
                 type={showPassword ? "text" : "password"}
                 required
                 className="block w-full rounded-lg border-0 py-2.5 pl-10 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white dark:ring-slate-700 sm:text-sm sm:leading-6"
@@ -164,10 +160,10 @@ function ResetPasswordForm() {
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || isPending}
           className="flex w-full justify-center rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-70 disabled:cursor-not-allowed transition-colors active:scale-[0.98]"
         >
-          {isLoading ? "Resetting..." : "Reset Password"}
+          {isLoading || isPending ? "Resetting..." : "Reset Password"}
         </button>
       </form>
     </div>
