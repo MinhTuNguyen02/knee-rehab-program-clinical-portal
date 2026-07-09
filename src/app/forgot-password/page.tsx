@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { EnvelopeSimple, ArrowLeft } from "@phosphor-icons/react";
+import { Mail, ArrowLeft } from 'lucide-react';
 import toast from "react-hot-toast";
 import Link from "next/link";
 
@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
               </label>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <EnvelopeSimple size={18} />
+                  <Mail className="w-4.5 h-4.5" />
                 </div>
                 <input
                   id="email"
@@ -80,15 +80,26 @@ export default function ForgotPasswordPage() {
             >
               {isLoading || isPending ? "Sending..." : "Send Reset Link"}
             </button>
+            <button
+              className="flex w-full justify-center gap-2"
+            >
+              <Link
+                href="/login"
+                className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to login
+              </Link>
+            </button>
           </form>
         ) : (
           <div className="flex justify-center pt-4">
             <Link
               href="/login"
-              className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary-hover dark:text-primary dark:hover:text-primary-hover"
+              className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors"
             >
-              <ArrowLeft size={16} />
-              Return to Login
+              <ArrowLeft className="w-4 h-4" />
+              Back to login
             </Link>
           </div>
         )}

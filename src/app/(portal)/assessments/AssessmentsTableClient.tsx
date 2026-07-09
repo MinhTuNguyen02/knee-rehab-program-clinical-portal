@@ -46,7 +46,7 @@ export function AssessmentsTableClient({ initialData, meta, currentZone, initial
     });
   };
 
-  const handlePrevPage = () => {
+  const handlePrevPage = (): void => {
     if (cursorHistory.length === 0) return;
 
     const newHistory = [...cursorHistory];

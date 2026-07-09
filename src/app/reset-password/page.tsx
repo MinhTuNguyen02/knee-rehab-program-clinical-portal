@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LockKey, Eye, EyeClosed, CircleNotch } from "@phosphor-icons/react";
+import { Lock, AlertCircle, ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react';
 import toast from "react-hot-toast";
 import Link from "next/link";
 
@@ -61,8 +61,12 @@ function ResetPasswordForm() {
         <p className="text-sm text-slate-600 dark:text-slate-400">
           The password reset link is invalid or has expired.
         </p>
-        <div className="pt-4">
-          <Link href="/forgot-password" className="text-sm font-medium text-primary hover:text-primary-hover">
+        <div className="pt-4 flex justify-center">
+          <Link
+            href="/forgot-password"
+            className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary-hover transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
             Request a new link
           </Link>
         </div>
@@ -80,7 +84,7 @@ function ResetPasswordForm() {
           Your password has been successfully reset. Redirecting to login...
         </p>
         <div className="pt-4 flex justify-center">
-          <CircleNotch className="h-6 w-6 animate-spin text-primary" />
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
       </div>
     );
@@ -106,7 +110,7 @@ function ResetPasswordForm() {
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                <LockKey size={18} />
+                <Lock className="w-4.5 h-4.5" />
               </div>
               <input
                 id="password"
@@ -121,10 +125,10 @@ function ResetPasswordForm() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-655 dark:hover:text-slate-300"
                 tabIndex={-1}
               >
-                {showPassword ? <Eye size={18} /> : <EyeClosed size={18} />}
+                {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
               </button>
             </div>
           </div>
@@ -135,7 +139,7 @@ function ResetPasswordForm() {
             </label>
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                <LockKey size={18} />
+                <Lock className="w-4.5 h-4.5" />
               </div>
               <input
                 id="confirmPassword"
@@ -149,10 +153,10 @@ function ResetPasswordForm() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-655 dark:hover:text-slate-300"
                 tabIndex={-1}
               >
-                {showConfirmPassword ? <Eye size={18} /> : <EyeClosed size={18} />}
+                {showConfirmPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
               </button>
             </div>
           </div>
@@ -174,7 +178,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="flex min-h-[100dvh] items-center justify-center p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
-        <Suspense fallback={<div className="flex justify-center p-8"><CircleNotch className="h-8 w-8 animate-spin text-primary" /></div>}>
+        <Suspense fallback={<div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
           <ResetPasswordForm />
         </Suspense>
       </div>

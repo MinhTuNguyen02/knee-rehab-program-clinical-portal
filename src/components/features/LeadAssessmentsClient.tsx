@@ -36,10 +36,10 @@ export function LeadAssessmentsClient({ assessments }: LeadAssessmentsClientProp
         onRowClick={(assessment) => { setSelectedAssessment(assessment); setIsModalOpen(true); }}
         emptyStateMessage="No assessments recorded for this patient."
         pagination={{
-          currentPage: currentPage,
-          totalPages: totalPages,
-          totalCount: totalCount,
-          onPageChange: setCurrentPage
+          hasMore: currentPage < totalPages,
+          canGoPrev: currentPage > 1,
+          onNext: () => setCurrentPage((prev) => prev + 1),
+          onPrev: () => setCurrentPage((prev) => prev - 1),
         }}
       />
 

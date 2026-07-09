@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LockKey, User, Eye, EyeClosed } from "@phosphor-icons/react";
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { adminLogin } from "@/app/actions/admin-auth";
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -35,8 +35,9 @@ export default function LoginPage() {
       setIsLoading(false);
       if (result?.error) {
         toast.error(result.error);
-      } else {
+      } else if (result?.success) {
         toast.success("Welcome back!");
+        router.push('/dashboard');
       }
     });
   };
@@ -62,7 +63,7 @@ export default function LoginPage() {
               </label>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <User size={18} />
+                  <Mail className="w-4.5 h-4.5" />
                 </div>
                 <input
                   id="email"
@@ -86,7 +87,7 @@ export default function LoginPage() {
               </div>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                  <LockKey size={18} />
+                  <Lock className="w-4.5 h-4.5" />
                 </div>
                 <input
                   id="password"
@@ -104,13 +105,15 @@ export default function LoginPage() {
                   className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                   tabIndex={-1}
                 >
-                  {showPassword ? <Eye size={18} /> : <EyeClosed size={18} />}
+                  {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                 </button>
               </div>
             </div>
-            <Link href="/forgot-password" className="text-sm font-medium text-primary hover:text-primary-hover dark:text-primary dark:hover:text-primary-hover">
-              Forgot password?
-            </Link>
+            <div className="flex justify-end">
+              <Link href="/forgot-password" className="text-sm font-medium text-primary hover:text-primary-hover dark:text-primary dark:hover:text-primary-hover">
+                Forgot password?
+              </Link>
+            </div>
           </div>
 
           <button
@@ -118,10 +121,22 @@ export default function LoginPage() {
             disabled={isLoading || isPending}
             className="flex w-full justify-center rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-70 disabled:cursor-not-allowed transition-colors active:scale-[0.98]"
           >
-            {isLoading || isPending ? "Signing in..." : "Sign in"}
+            {isLoading || isPending ? "Logging in..." : "Login"}
           </button>
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-[100dvh] items-center justify-center p-4">
+        <div className="text-slate-500">Loading login...</div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

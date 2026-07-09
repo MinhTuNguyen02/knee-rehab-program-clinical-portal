@@ -37,13 +37,18 @@ export async function adminLogin(formData: FormData) {
 
         const data = await response.json();
 
-        if (!response.ok) {
-            return { error: data.message || 'Invalid credentials' };
+        if (data.error) {
+            return { error: data.error.message };
         }
 
         // Set HttpOnly Cookie
         const cookieStore = await cookies();
-        cookieStore.set('auth_token', data.access_token, {
+        const token = data.data?.access_token || data.access_token;
+        if (!token) {
+            return { error: 'Failed to retrieve access token' };
+        }
+        
+        cookieStore.set('auth_token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
@@ -55,8 +60,7 @@ export async function adminLogin(formData: FormData) {
         return { error: 'Internal server error' };
     }
 
-    // Direct
-    redirect('/dashboard');
+    return { success: true };
 }
 
 export async function adminForgotPassword(formData: FormData) {
@@ -77,11 +81,11 @@ export async function adminForgotPassword(formData: FormData) {
 
         const data = await response.json();
 
-        if (!response.ok) {
-            return { error: data.message || 'Failed to request reset link' };
+        if (data.error) {
+            return { error: data.error.message || 'Failed to request reset link' };
         }
 
-        return { success: data.message || 'Check your email for reset instructions' };
+        return { success: data.data?.message || data.message || 'Check your email for reset instructions' };
     } catch (error) {
         return { error: 'Internal server error' };
     }
@@ -106,11 +110,11 @@ export async function adminResetPassword(formData: FormData) {
 
         const data = await response.json();
 
-        if (!response.ok) {
-            return { error: data.message || 'Failed to reset password' };
+        if (data.error) {
+            return { error: data.error.message || 'Failed to reset password' };
         }
 
-        return { success: data.message || 'Password reset successfully' };
+        return { success: data.data?.message || data.message || 'Password reset successfully' };
     } catch (error) {
         return { error: 'Internal server error' };
     }
