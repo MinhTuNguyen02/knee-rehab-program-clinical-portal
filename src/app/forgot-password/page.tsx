@@ -10,10 +10,22 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setEmailError(null);
     setIsLoading(true);
+
+    if (!email) {
+      setEmailError("Email address is required.");
+      setIsLoading(false);
+      return;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError("Please enter a valid email address.");
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch("/api/auth/forgot-password", {
@@ -24,18 +36,30 @@ export default function ForgotPasswordPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        const errorMsg = Array.isArray(data.message)
-          ? data.message.join(", ")
-          : data.message;
-        throw new Error(errorMsg || "Failed to process request");
+        const errorMsgs = Array.isArray(data.message) ? data.message : [data.message || "Failed to process request"];
+        let fieldErr: string | null = null;
+        let genericErr: string | null = null;
+
+        errorMsgs.forEach((msg: string) => {
+          if (msg.toLowerCase().includes("email")) {
+            fieldErr = msg;
+          } else {
+            genericErr = msg;
+          }
+        });
+
+        if (fieldErr) {
+          setEmailError(fieldErr);
+        }
+        throw new Error(genericErr || "");
       }
 
       setIsSuccess(true);
       toast.success("Check your email for reset instructions.");
     } catch (err: any) {
-      // For security, even if it fails due to "user not found", we should typically show success to avoid email enumeration.
-      // But we still catch network errors.
-      toast.error(err.message || "Failed to process request");
+      if (err.message) {
+        toast.error(err.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -71,13 +95,21 @@ export default function ForgotPasswordPage() {
                 <input
                   id="email"
                   type="email"
-                  required
-                  className="block w-full rounded-lg border-0 py-2.5 pl-10 pr-3 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white dark:ring-slate-700 sm:text-sm sm:leading-6"
+                  className={`block w-full rounded-lg border-0 py-2.5 pl-10 pr-3 text-slate-900 ring-1 ring-inset placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white sm:text-sm sm:leading-6 ${
+                    emailError
+                      ? "ring-red-300 focus:ring-red-500"
+                      : "ring-slate-300 focus:ring-primary dark:ring-slate-700"
+                  }`}
                   placeholder="admin@krps.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
+              {emailError && (
+                <p className="text-xs text-red-655 mt-1" role="alert">
+                  {emailError}
+                </p>
+              )}
             </div>
 
             <button

@@ -13,19 +13,40 @@ function ResetPasswordForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ password?: string; confirmPassword?: string }>({});
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFieldErrors({});
     if (!token) {
       toast.error("Invalid or missing reset token.");
       return;
     }
 
+    let hasError = false;
+    const newFieldErrors: typeof fieldErrors = {};
+
+    if (password.length < 8) {
+      newFieldErrors.password = "Password must be at least 8 characters long.";
+      hasError = true;
+    } else if (!/[A-Z]/.test(password)) {
+      newFieldErrors.password = "Password must contain at least one uppercase letter.";
+      hasError = true;
+    } else if (!/[0-9]/.test(password)) {
+      newFieldErrors.password = "Password must contain at least one number.";
+      hasError = true;
+    }
+
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match.");
+      newFieldErrors.confirmPassword = "Passwords do not match.";
+      hasError = true;
+    }
+
+    if (hasError) {
+      setFieldErrors(newFieldErrors);
       return;
     }
 
@@ -40,10 +61,23 @@ function ResetPasswordForm() {
 
       if (!res.ok) {
         const data = await res.json();
-        const errorMsg = Array.isArray(data.message)
-          ? data.message.join(", ")
-          : data.message;
-        throw new Error(errorMsg || "Failed to reset password");
+        const errorMsgs = Array.isArray(data.message) ? data.message : [data.message || "Failed to reset password"];
+        const backendFieldErrors: typeof fieldErrors = {};
+        let genericError: string | null = null;
+
+        errorMsgs.forEach((msg: string) => {
+          const lowercaseMsg = msg.toLowerCase();
+          if (lowercaseMsg.includes("password")) {
+            backendFieldErrors.password = msg;
+          } else {
+            genericError = msg;
+          }
+        });
+
+        if (Object.keys(backendFieldErrors).length > 0) {
+          setFieldErrors(backendFieldErrors);
+        }
+        throw new Error(genericError || "");
       }
 
       setIsSuccess(true);
@@ -52,7 +86,9 @@ function ResetPasswordForm() {
         router.push("/login");
       }, 2000);
     } catch (err: any) {
-      toast.error(err.message || "Failed to reset password");
+      if (err.message) {
+        toast.error(err.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -116,8 +152,11 @@ function ResetPasswordForm() {
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                required
-                className="block w-full rounded-lg border-0 py-2.5 pl-10 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white dark:ring-slate-700 sm:text-sm sm:leading-6"
+                className={`block w-full rounded-lg border-0 py-2.5 pl-10 pr-10 text-slate-900 ring-1 ring-inset placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white sm:text-sm sm:leading-6 ${
+                  fieldErrors.password
+                    ? "ring-red-300 focus:ring-red-500"
+                    : "ring-slate-300 focus:ring-primary dark:ring-slate-700"
+                }`}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -131,6 +170,11 @@ function ResetPasswordForm() {
                 {showPassword ? <Eye size={18} /> : <EyeClosed size={18} />}
               </button>
             </div>
+            {fieldErrors.password && (
+              <p className="text-xs text-red-655 mt-1" role="alert">
+                {fieldErrors.password}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -144,8 +188,11 @@ function ResetPasswordForm() {
               <input
                 id="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
-                required
-                className="block w-full rounded-lg border-0 py-2.5 pl-10 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white dark:ring-slate-700 sm:text-sm sm:leading-6"
+                className={`block w-full rounded-lg border-0 py-2.5 pl-10 pr-10 text-slate-900 ring-1 ring-inset placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white sm:text-sm sm:leading-6 ${
+                  fieldErrors.confirmPassword
+                    ? "ring-red-300 focus:ring-red-500"
+                    : "ring-slate-300 focus:ring-primary dark:ring-slate-700"
+                }`}
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -159,6 +206,11 @@ function ResetPasswordForm() {
                 {showConfirmPassword ? <Eye size={18} /> : <EyeClosed size={18} />}
               </button>
             </div>
+            {fieldErrors.confirmPassword && (
+              <p className="text-xs text-red-655 mt-1" role="alert">
+                {fieldErrors.confirmPassword}
+              </p>
+            )}
           </div>
         </div>
 
