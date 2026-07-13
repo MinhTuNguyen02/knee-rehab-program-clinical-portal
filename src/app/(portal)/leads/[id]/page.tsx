@@ -62,7 +62,7 @@ export default async function LeadDetailPage(props: { params: Promise<{ id: stri
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-1">
               <span className="text-xs font-medium text-slate-500 flex items-center gap-1"><EnvelopeSimple size={14} /> Email</span>
-              <p className="text-sm text-slate-900 font-medium">{lead.email || "N/A"}</p>
+              <p className="text-sm text-slate-900 font-medium break-all">{lead.email || "N/A"}</p>
             </div>
             <div className="space-y-1">
               <span className="text-xs font-medium text-slate-500 flex items-center gap-1"><Phone size={14} /> Mobile</span>

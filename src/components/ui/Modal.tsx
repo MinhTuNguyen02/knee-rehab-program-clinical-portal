@@ -35,12 +35,12 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" 
+      <div
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
-      
+
       {/* Modal Panel */}
       <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 ease-out">
         {/* Header */}
@@ -56,7 +56,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             <X size={20} weight="bold" />
           </button>
         </div>
-        
+
         {/* Content */}
         <div className="px-6 py-6 overflow-y-auto">
           {children}
