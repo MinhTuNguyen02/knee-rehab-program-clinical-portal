@@ -11,6 +11,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const router = useRouter();
 
@@ -19,12 +20,13 @@ function LoginForm() {
 
   useEffect(() => {
     if (searchParams.get("reason") === "expired") {
-      toast.error("Your session has expired. Please sign in again.");
+      setError("Your session has expired. Please sign in again.");
     }
   }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
     setFieldErrors({});
     setIsLoading(true);
 
@@ -62,7 +64,9 @@ function LoginForm() {
         setIsLoading(false);
 
         if (!res.ok) {
-          const errorMsgs = Array.isArray(data.message) ? data.message : [data.message || "Invalid credentials"];
+          const errorMsgs = Array.isArray(data.message)
+            ? data.message
+            : (data.error?.message ? [data.error.message] : [data.message || "Invalid credentials"]);
           const backendFieldErrors: typeof fieldErrors = {};
           let genericError: string | null = null;
 
@@ -70,7 +74,7 @@ function LoginForm() {
             const lowercaseMsg = msg.toLowerCase();
             if (lowercaseMsg.includes("email")) {
               backendFieldErrors.email = msg;
-            } else if (lowercaseMsg.includes("password") || lowercaseMsg.includes("credentials")) {
+            } else if (lowercaseMsg.includes("password")) {
               backendFieldErrors.password = msg;
             } else {
               genericError = msg;
@@ -81,7 +85,7 @@ function LoginForm() {
             setFieldErrors(backendFieldErrors);
           }
           if (genericError) {
-            toast.error(genericError);
+            setError(genericError);
           }
         } else {
           toast.success("Welcome back!");
@@ -89,7 +93,7 @@ function LoginForm() {
         }
       } catch (err: any) {
         setIsLoading(false);
-        toast.error("Failed to connect to the server.");
+        setError("Failed to connect to the server.");
       }
     });
   };
@@ -107,6 +111,11 @@ function LoginForm() {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
+          {error && (
+            <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-900/50">
+              {error}
+            </div>
+          )}
 
           <div className="space-y-4">
             <div className="space-y-2">
@@ -122,8 +131,8 @@ function LoginForm() {
                   name="email"
                   type="email"
                   className={`block w-full rounded-lg border-0 py-2.5 pl-10 pr-3 text-slate-900 ring-1 ring-inset placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white sm:text-sm sm:leading-6 ${fieldErrors.email
-                      ? "ring-red-300 focus:ring-red-500"
-                      : "ring-slate-300 focus:ring-primary dark:ring-slate-700"
+                    ? "ring-red-300 focus:ring-red-500"
+                    : "ring-slate-300 focus:ring-primary dark:ring-slate-700"
                     }`}
                   placeholder="admin@krps.com"
                   value={email}
@@ -131,7 +140,7 @@ function LoginForm() {
                 />
               </div>
               {fieldErrors.email && (
-                <p className="text-xs text-red-655 mt-1" role="alert">
+                <p className="text-xs text-red-600 mt-1" role="alert">
                   {fieldErrors.email}
                 </p>
               )}
@@ -152,8 +161,8 @@ function LoginForm() {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   className={`block w-full rounded-lg border-0 py-2.5 pl-10 pr-10 text-slate-900 ring-1 ring-inset placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-primary dark:bg-slate-800 dark:text-white sm:text-sm sm:leading-6 ${fieldErrors.password
-                      ? "ring-red-300 focus:ring-red-500"
-                      : "ring-slate-300 focus:ring-primary dark:ring-slate-700"
+                    ? "ring-red-300 focus:ring-red-500"
+                    : "ring-slate-300 focus:ring-primary dark:ring-slate-700"
                     }`}
                   placeholder="••••••••"
                   value={password}
@@ -169,7 +178,7 @@ function LoginForm() {
                 </button>
               </div>
               {fieldErrors.password && (
-                <p className="text-xs text-red-655 mt-1" role="alert">
+                <p className="text-xs text-red-600 mt-1" role="alert">
                   {fieldErrors.password}
                 </p>
               )}
