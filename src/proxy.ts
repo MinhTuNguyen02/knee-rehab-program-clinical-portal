@@ -5,11 +5,12 @@ export default function proxy(request: NextRequest) {
   const token = request.cookies.get("auth_token")?.value;
   const isAuthPage = request.nextUrl.pathname.startsWith("/login");
 
-  // Protect /dashboard, /leads, /assessments
+  // Protect /dashboard, /leads, /assessments, /messages
   const isProtectedRoute =
     request.nextUrl.pathname.startsWith("/dashboard") ||
     request.nextUrl.pathname.startsWith("/leads") ||
-    request.nextUrl.pathname.startsWith("/assessments");
+    request.nextUrl.pathname.startsWith("/assessments") ||
+    request.nextUrl.pathname.startsWith("/messages");
 
   if (isProtectedRoute && !token) {
     const url = new URL("/login", request.url);

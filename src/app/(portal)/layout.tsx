@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, Users, ClipboardList, List, X, LogOut } from "lucide-react";
+import { Activity, Users, ClipboardList, List, X, MessagesSquare } from "lucide-react";
 import { useTransition } from "react";
 import UserMenu from "@/components/ui/UserMenu";
 
@@ -21,6 +21,7 @@ export default function PortalLayout({
     { name: "Dashboard", href: "/dashboard", icon: Activity },
     { name: "Leads", href: "/leads", icon: Users },
     { name: "Assessments", href: "/assessments", icon: ClipboardList },
+    { name: "Messages", href: "/messages", icon: MessagesSquare },
   ];
 
   return (

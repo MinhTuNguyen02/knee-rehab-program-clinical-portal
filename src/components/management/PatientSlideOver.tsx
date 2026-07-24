@@ -153,53 +153,53 @@ export function PatientSlideOver({ patientId, onClose }: PatientSlideOverProps) 
               <>
                 {/* General Info Grid Card */}
                 <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
-                  <h3 className="text-xs font-semibold tracking-tight text-slate-900 uppercase">Patient Information</h3>
+                  <h3 className="text-sm font-semibold tracking-tight text-slate-900 uppercase">Patient Information</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                     <div className="space-y-1">
-                      <span className="text-xs font-medium text-slate-500 flex items-center gap-1"><EnvelopeSimple size={14} /> Email</span>
-                      <p className="text-sm text-slate-900 font-semibold break-all">{patient.data.email || "N/A"}</p>
+                      <span className="text-sm font-medium text-slate-500 flex items-center gap-1"><EnvelopeSimple size={14} /> Email</span>
+                      <p className="text-md text-slate-900 font-semibold break-all">{patient.data.email || "N/A"}</p>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-xs font-medium text-slate-500 flex items-center gap-1"><Phone size={14} /> Mobile</span>
-                      <p className="text-sm text-slate-900 font-semibold">{patient.data.mobile || "N/A"}</p>
+                      <span className="text-sm font-medium text-slate-500 flex items-center gap-1"><Phone size={14} /> Mobile</span>
+                      <p className="text-md text-slate-900 font-semibold">{patient.data.mobile || "N/A"}</p>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-xs font-medium text-slate-500 flex items-center gap-1"><UserCircle size={14} /> Age</span>
-                      <p className="text-sm text-slate-900 font-semibold">{patient.data.age || "N/A"}</p>
+                      <span className="text-sm font-medium text-slate-500 flex items-center gap-1"><UserCircle size={14} /> Age</span>
+                      <p className="text-md text-slate-900 font-semibold">{patient.data.age || "N/A"}</p>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-xs font-medium text-slate-500 flex items-center gap-1"><GenderIntersex size={14} /> Gender</span>
-                      <p className="text-sm text-slate-900 font-semibold capitalize">{patient.data.gender || "N/A"}</p>
+                      <span className="text-sm font-medium text-slate-500 flex items-center gap-1"><GenderIntersex size={14} /> Gender</span>
+                      <p className="text-md text-slate-900 font-semibold capitalize">{patient.data.gender || "N/A"}</p>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-xs font-medium text-slate-500 flex items-center gap-1"><WarningCircle size={14} /> Knee Side</span>
-                      <p className="text-sm text-slate-900 font-semibold capitalize">
+                      <span className="text-sm font-medium text-slate-500 flex items-center gap-1"><WarningCircle size={14} /> Knee Side</span>
+                      <p className="text-md text-slate-900 font-semibold capitalize">
                         {({ "R": "Right", "L": "Left", "B": "Both" } as Record<string, string>)[patient.data.kneeSide] || patient.data.kneeSide || "N/A"}
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-xs font-medium text-slate-500 flex items-center gap-1"><CheckCircle size={14} /> Consent</span>
-                      <p className="text-sm text-slate-900 font-semibold">{patient.data.consentAccepted ? "Accepted" : "Not accepted"}</p>
+                      <span className="text-sm font-medium text-slate-500 flex items-center gap-1"><CheckCircle size={14} /> Consent</span>
+                      <p className="text-md text-slate-900 font-semibold">{patient.data.consentAccepted ? "Accepted" : "Not accepted"}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Notifications & Preferences Card */}
                 <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
-                  <h3 className="text-xs font-semibold tracking-tight text-slate-900 uppercase">Preferences</h3>
+                  <h3 className="text-sm font-semibold tracking-tight text-slate-900 uppercase">Preferences</h3>
                   <div>
-                    <span className="text-xs font-medium text-slate-500">Notifications</span>
+                    <span className="text-sm font-medium text-slate-500">Notifications</span>
                     <div className="flex flex-wrap gap-2 mt-2">
                       {patient.data.notificationPrefs && Object.keys(patient.data.notificationPrefs).length > 0 ? (
                         Object.entries(patient.data.notificationPrefs)
                           .filter(([_, value]) => value)
                           .map(([pref]) => (
-                            <span key={pref} className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-800 uppercase">
+                            <span key={pref} className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-sm font-medium text-slate-800 uppercase">
                               {pref.replace(/(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/g, ' ').trim()}
                             </span>
                           ))
                       ) : (
-                        <span className="text-xs text-slate-450 italic">No preferences configured</span>
+                        <span className="text-sm text-slate-450 italic">No preferences configured</span>
                       )}
                     </div>
                   </div>
@@ -207,7 +207,7 @@ export function PatientSlideOver({ patientId, onClose }: PatientSlideOverProps) 
 
                 {/* Patient's Historical Assessment Log Card */}
                 <div className="space-y-4">
-                  <h3 className="text-xs font-semibold tracking-tight text-slate-900 uppercase">Assessment History</h3>
+                  <h3 className="text-sm font-semibold tracking-tight text-slate-900 uppercase">Assessment History</h3>
                   <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                     <LeadAssessmentsClient assessments={patient.data.assessments || []} />
                   </div>
