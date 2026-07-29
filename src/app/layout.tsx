@@ -33,7 +33,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
-      <body className={`${outfit.className} min-h-[100dvh] flex flex-col bg-background text-foreground font-sans selection:bg-primary/20 selection:text-primary`}>
+      <body className={`${outfit.className} min-h-[100dvh] flex flex-col bg-background text-foreground font-sans`}>
         {children}
         <Toaster position="top-right" />
       </body>

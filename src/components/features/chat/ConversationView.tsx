@@ -6,14 +6,16 @@ import { useStaffChat } from '@/hooks/useStaffChat';
 import { MessageBubble } from './MessageBubble';
 import { ZoneBadge } from '@/components/ui/ZoneBadge';
 import { PatientSlideOver } from '@/components/management/PatientSlideOver';
-import { Send, MessageSquare, AlertCircle, Info, ArrowLeft } from 'lucide-react';
+import { Send, MessageSquare, AlertCircle, Info, ArrowLeft, ChevronDown } from 'lucide-react';
+import { formatDateDivider, formatBubbleTime } from '@/lib/utils';
 
 interface ConversationViewProps {
     conversation: Conversation | null;
+    isPatientOnline: boolean;
     onBack?: () => void;
 }
 
-export function ConversationView({ conversation, onBack }: ConversationViewProps) {
+export function ConversationView({ conversation, isPatientOnline, onBack }: ConversationViewProps) {
     const {
         messages,
         loading,
@@ -21,6 +23,10 @@ export function ConversationView({ conversation, onBack }: ConversationViewProps
         hasMore,
         sending,
         error,
+        isConnected,
+        isReconnecting,
+        isPatientTyping,
+        emitTyping,
         sendMessage,
         loadMore
     } = useStaffChat(conversation ? conversation.id : null);
@@ -32,6 +38,10 @@ export function ConversationView({ conversation, onBack }: ConversationViewProps
     const previousHeightRef = useRef<number>(0);
     const lastMessageIdRef = useRef<string | null>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+
+    const [activeTimeMsgId, setActiveTimeMsgId] = useState<string | null>(null);
+
+    const [showScrollButton, setShowScrollButton] = useState(false);
 
     // Identify last read staff message
     const lastReadStaffMsgId = useMemo(() => {
@@ -48,18 +58,31 @@ export function ConversationView({ conversation, onBack }: ConversationViewProps
             }
             lastMessageIdRef.current = currentLastMsg.id;
         }
-    }, [messages, loading]);
+    }, [loading, messages]);
 
-    const scrollToBottom = () => {
+    const scrollToBottom = (smooth = false) => {
         if (messageListRef.current) {
-            messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
+            if (smooth) {
+                messageListRef.current.scrollTo({
+                    top: messageListRef.current.scrollHeight,
+                    behavior: 'smooth'
+                })
+            } else {
+                messageListRef.current.scrollTop = messageListRef.current.scrollHeight
+            }
+
+            setShowScrollButton(false);
         }
     };
 
     const handleScroll = async (e: UIEvent<HTMLDivElement>) => {
+        const target = e.currentTarget;
+
+        const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+        setShowScrollButton(distanceFromBottom > 50);
+
         if (loadingMore || !hasMore) return;
 
-        const target = e.currentTarget;
         if (target.scrollTop <= 1 && messages.length > 0) {
             previousHeightRef.current = target.scrollHeight;
             await loadMore();
@@ -76,6 +99,7 @@ export function ConversationView({ conversation, onBack }: ConversationViewProps
 
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setInputText(e.target.value);
+        emitTyping();
         const target = e.target;
         target.style.height = 'auto';
         target.style.height = `${target.scrollHeight}px`;
@@ -113,30 +137,11 @@ export function ConversationView({ conversation, onBack }: ConversationViewProps
     const groupMessagesByDay = (msgs: typeof messages) => {
         const groups: { [key: string]: typeof messages } = {};
         msgs.forEach(msg => {
-            const dateKey = formatGroupDate(msg.sentAt);
+            const dateKey = formatDateDivider(msg.sentAt);
             if (!groups[dateKey]) groups[dateKey] = [];
             groups[dateKey].push(msg);
         });
         return Object.entries(groups);
-    };
-
-    const formatGroupDate = (dateStr: string) => {
-        const d = new Date(dateStr);
-        const today = new Date();
-        const yesterday = new Date();
-        yesterday.setDate(today.getDate() - 1);
-
-        if (d.toDateString() === today.toDateString()) return 'Today';
-        if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-
-        const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
-        if (d.getFullYear() !== today.getFullYear()) options.year = 'numeric';
-        return d.toLocaleDateString('en-US', options);
-    };
-
-    const formatTime = (dateStr: string) => {
-        const d = new Date(dateStr);
-        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
     };
 
     const getLatestZone = (conv: Conversation) => {
@@ -168,7 +173,7 @@ export function ConversationView({ conversation, onBack }: ConversationViewProps
     return (
         <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-900 overflow-hidden relative">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-xs z-10">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-md z-10 relative">
                 <div className="flex items-center gap-3">
                     {onBack && (
                         <button
@@ -182,6 +187,7 @@ export function ConversationView({ conversation, onBack }: ConversationViewProps
                     <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold shadow-sm text-sm border border-primary/20">
                         {conversation.patient?.firstName?.[0]?.toUpperCase()}
                         {conversation.patient?.lastName?.[0]?.toUpperCase()}
+                        <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-slate-900 ${isPatientOnline ? 'bg-green-500' : 'bg-amber-400'}`} />
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
@@ -207,120 +213,161 @@ export function ConversationView({ conversation, onBack }: ConversationViewProps
             </div>
 
             {/* Chat Body */}
-            <div
-                ref={messageListRef}
-                onScroll={handleScroll}
-                className="flex-1 overflow-y-auto px-6 py-4 bg-slate-50/50 dark:bg-slate-900/30"
-            >
-                {loading && messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full space-y-2">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                        <p className="text-xs text-slate-500">Loading conversation...</p>
-                    </div>
-                ) : error ? (
-                    <div className="flex flex-col items-center justify-center h-full space-y-4 text-center px-4">
-                        <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
-                            <AlertCircle className="w-8 h-8 text-red-500" />
+            <div className="flex-1 relative min-h-0 flex flex-col bg-slate-50/50 dark:bg-slate-900/30">
+                <div
+                    ref={messageListRef}
+                    onScroll={handleScroll}
+                    className="flex-1 overflow-y-auto px-6 py-4 bg-slate-50/50 dark:bg-slate-900/30"
+                >
+                    {/* Reconnection Banner */}
+                    {isReconnecting && (
+                        <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2 flex items-center justify-center gap-2 mb-4 mx-auto max-w-sm">
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-amber-600 dark:border-amber-500"></div>
+                            <span className="text-xs font-medium text-amber-700 dark:text-amber-500">Reconnecting...</span>
                         </div>
-                        <div className="space-y-1">
-                            <h3 className="font-bold text-slate-900 dark:text-white text-sm">Connection Error</h3>
-                            <p className="text-xs text-slate-500">{error}</p>
+                    )}
+
+                    {loading && messages.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full space-y-2">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                            <p className="text-xs text-slate-500">Loading conversation...</p>
                         </div>
-                    </div>
-                ) : messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 px-4 text-center space-y-4 h-full">
-                        <div className="p-4 bg-primary/5 rounded-full text-primary">
-                            <MessageSquare className="w-10 h-10 opacity-70" />
-                        </div>
-                        <div className="max-w-sm space-y-1">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">No messages yet</h3>
-                            <p className="text-xs text-slate-500 leading-relaxed font-normal">
-                                Send a message to start the conversation with {patientName}.
-                            </p>
-                        </div>
-                    </div>
-                ) : (
-                    groupMessagesByDay(messages).map(([dayKey, dayMsgs]) => (
-                        <div key={dayKey} className="flex flex-col">
-                            {/* Date Header */}
-                            <div className="flex justify-center mt-6 mb-4">
-                                <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-700/50 shadow-2xs uppercase tracking-wider">
-                                    {dayKey}
-                                </span>
+                    ) : error ? (
+                        <div className="flex flex-col items-center justify-center h-full space-y-4 text-center px-4">
+                            <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
+                                <AlertCircle className="w-8 h-8 text-red-500" />
                             </div>
-
-                            {dayMsgs.map((msg, index) => {
-                                const isOwnMessage = msg.senderType === 'staff';
-                                const prevMsg = dayMsgs[index - 1];
-                                const nextMsg = dayMsgs[index + 1];
-
-                                const FIVE_MINUTES = 5 * 60 * 1000;
-
-                                const isFirstInGroup = !prevMsg ||
-                                    prevMsg.senderType !== msg.senderType ||
-                                    (new Date(msg.sentAt).getTime() - new Date(prevMsg.sentAt).getTime() > FIVE_MINUTES);
-
-                                const isLastInGroup = !nextMsg ||
-                                    nextMsg.senderType !== msg.senderType ||
-                                    (new Date(nextMsg.sentAt).getTime() - new Date(msg.sentAt).getTime() > FIVE_MINUTES);
-
-                                const isAbsoluteLastMsg = msg.id === messages[messages.length - 1].id;
-                                const isLastReadMsg = msg.id === lastReadStaffMsgId;
-                                const showStatusBlock = isAbsoluteLastMsg || (isOwnMessage && isLastReadMsg);
-
-                                // Flipped bubble corner shape relative to patient app
-                                let bubbleShapeClass = 'rounded-2xl';
-                                if (isOwnMessage) { // Staff (Right side)
-                                    if (isFirstInGroup && isLastInGroup) {
-                                        bubbleShapeClass;
-                                    } else if (isFirstInGroup) {
-                                        bubbleShapeClass += ' rounded-br-xs';
-                                    } else if (isLastInGroup) {
-                                        bubbleShapeClass += ' rounded-tr-xs';
-                                    } else {
-                                        bubbleShapeClass += ' rounded-tr-xs rounded-br-xs';
-                                    }
-                                } else { // Patient (Left side)
-                                    if (isFirstInGroup && isLastInGroup) {
-                                        bubbleShapeClass;
-                                    } else if (isFirstInGroup) {
-                                        bubbleShapeClass += ' rounded-bl-xs';
-                                    } else if (isLastInGroup) {
-                                        bubbleShapeClass += ' rounded-tl-xs';
-                                    } else {
-                                        bubbleShapeClass += ' rounded-tl-xs rounded-bl-xs';
-                                    }
-                                }
-
-                                const marginTopClass = index === 0 ? '' : isFirstInGroup ? 'mt-6' : 'mt-1';
-
-                                return (
-                                    <div key={msg.id} className={`${marginTopClass} w-full`}>
-                                        {/* Sender name for patient bubbles */}
-                                        {!isOwnMessage && isFirstInGroup && (
-                                            <span className="text-[10px] font-semibold text-slate-550 dark:text-slate-400 ml-1.5 mb-1 block text-left">
-                                                {patientName}
-                                            </span>
-                                        )}
-
-                                        <MessageBubble
-                                            message={msg}
-                                            isOwnMessage={isOwnMessage}
-                                            bubbleShapeClass={bubbleShapeClass}
-                                            showStatusBlock={showStatusBlock}
-                                            formatTime={formatTime}
-                                        />
-                                    </div>
-                                );
-                            })}
+                            <div className="space-y-1">
+                                <h3 className="font-bold text-slate-900 dark:text-white text-sm">Connection Error</h3>
+                                <p className="text-xs text-slate-500">{error}</p>
+                            </div>
                         </div>
-                    ))
-                )}
-                {loadingMore && (
-                    <div className="flex justify-center py-2 shrink-0">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                    ) : messages.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 px-4 text-center space-y-4 h-full">
+                            <div className="p-4 bg-primary/5 rounded-full text-primary">
+                                <MessageSquare className="w-10 h-10 opacity-70" />
+                            </div>
+                            <div className="max-w-sm space-y-1">
+                                <h3 className="text-sm font-bold text-slate-900 dark:text-white">No messages yet</h3>
+                                <p className="text-xs text-slate-500 leading-relaxed font-normal">
+                                    Send a message to start the conversation with {patientName}.
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        groupMessagesByDay(messages).map(([dayKey, dayMsgs]) => (
+                            <div key={dayKey} className="flex flex-col">
+                                {/* Date Header */}
+                                <div className="flex justify-center mt-6 mb-4">
+                                    <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-700/50 shadow-2xs uppercase tracking-wider">
+                                        {dayKey}
+                                    </span>
+                                </div>
+
+                                {dayMsgs.map((msg, index) => {
+                                    const isOwnMessage = msg.senderType === 'staff';
+                                    const prevMsg = dayMsgs[index - 1];
+                                    const nextMsg = dayMsgs[index + 1];
+
+                                    const FIVE_MINUTES = 5 * 60 * 1000;
+
+                                    const isFirstInGroup = !prevMsg ||
+                                        prevMsg.senderType !== msg.senderType ||
+                                        (new Date(msg.sentAt).getTime() - new Date(prevMsg.sentAt).getTime() > FIVE_MINUTES);
+
+                                    const isLastInGroup = !nextMsg ||
+                                        nextMsg.senderType !== msg.senderType ||
+                                        (new Date(nextMsg.sentAt).getTime() - new Date(msg.sentAt).getTime() > FIVE_MINUTES);
+
+                                    const isAbsoluteLastMsg = msg.id === messages[messages.length - 1].id && isOwnMessage;
+                                    const isLastReadMsg = msg.id === lastReadStaffMsgId;
+                                    const showStatusBlock = isAbsoluteLastMsg || (isOwnMessage && isLastReadMsg);
+
+                                    // Flipped bubble corner shape relative to patient app
+                                    let bubbleShapeClass = 'rounded-2xl';
+                                    if (isOwnMessage) { // Staff (Right side)
+                                        if (isFirstInGroup && isLastInGroup) {
+                                            bubbleShapeClass;
+                                        } else if (isFirstInGroup) {
+                                            bubbleShapeClass += ' rounded-br-xs';
+                                        } else if (isLastInGroup) {
+                                            bubbleShapeClass += ' rounded-tr-xs';
+                                        } else {
+                                            bubbleShapeClass += ' rounded-tr-xs rounded-br-xs';
+                                        }
+                                    } else { // Patient (Left side)
+                                        if (isFirstInGroup && isLastInGroup) {
+                                            bubbleShapeClass;
+                                        } else if (isFirstInGroup) {
+                                            bubbleShapeClass += ' rounded-bl-xs';
+                                        } else if (isLastInGroup) {
+                                            bubbleShapeClass += ' rounded-tl-xs';
+                                        } else {
+                                            bubbleShapeClass += ' rounded-tl-xs rounded-bl-xs';
+                                        }
+                                    }
+
+                                    const marginTopClass = index === 0 ? '' : isFirstInGroup ? 'mt-6' : 'mt-1';
+
+                                    return (
+                                        <div key={msg.id} className={`${marginTopClass} w-full`}>
+                                            {/* Sender name for patient bubbles */}
+                                            {!isOwnMessage && isFirstInGroup && (
+                                                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 ml-1.5 mb-1 block text-left">
+                                                    {patientName}
+                                                </span>
+                                            )}
+
+                                            <MessageBubble
+                                                message={msg}
+                                                isOwnMessage={isOwnMessage}
+                                                bubbleShapeClass={bubbleShapeClass}
+                                                showStatusBlock={showStatusBlock}
+                                                formatTime={formatBubbleTime}
+                                                isTimeVisible={activeTimeMsgId === msg.id}
+                                                onToggleTime={() => setActiveTimeMsgId(prev => prev === msg.id ? null : msg.id)}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))
+                    )}
+                    {loadingMore && (
+                        <div className="flex justify-center py-2 shrink-0">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                        </div>
+                    )}
+                </div>
+
+                {/* Typing Indicator */}
+                {(isPatientTyping && !showScrollButton) && (
+                    <div className="px-6 py-2 bg-slate-50/50 dark:bg-slate-900/30 flex items-center gap-2">
+                        <span className="text-xs text-slate-500 italic">{patientName} is typing</span>
+                        <div className="flex gap-1">
+                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                        </div>
                     </div>
                 )}
+
+                <button
+                    onClick={() => scrollToBottom(true)}
+                    className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center justify-center w-9 h-9 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md rounded-full text-slate-500 hover:text-primary transition-all duration-300 z-20 ${showScrollButton
+                        ? 'opacity-100 translate-y-0'
+                        : 'opacity-0 translate-y-4 pointer-events-none'
+                        }`}
+                    aria-label="Scroll to bottom"
+                >
+                    {isPatientTyping ? (
+                        <div className="flex gap-1">
+                            <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                            <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                            <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce"></span>
+                        </div>) : <ChevronDown className="w-5 h-5" />}
+
+                </button>
             </div>
 
             {/* Input Form */}
@@ -333,14 +380,15 @@ export function ConversationView({ conversation, onBack }: ConversationViewProps
                         ref={inputRef}
                         value={inputText}
                         onChange={handleTextChange}
-                        placeholder="Type a message..."
+                        disabled={isReconnecting}
+                        placeholder={isReconnecting ? "Reconnecting..." : "Type a message..."}
                         onKeyDown={handleKeyDown}
                         rows={1}
                         className="flex-1 resize-none overflow-y-auto max-h-[150px] min-h-[44px] px-4 py-2.5 bg-slate-50 hover:bg-slate-100/60 dark:bg-slate-800/50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white dark:focus:bg-slate-800 text-sm text-slate-900 dark:text-white transition-all disabled:opacity-50"
                     />
                     <button
                         type="submit"
-                        disabled={!inputText.trim() || sending}
+                        disabled={!inputText.trim() || sending || isReconnecting}
                         className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary hover:bg-primary-hover active:scale-[0.97] transition-all text-white disabled:opacity-30 disabled:pointer-events-none shadow-md shrink-0 shadow-primary/10 cursor-pointer"
                         aria-label="Send message"
                     >

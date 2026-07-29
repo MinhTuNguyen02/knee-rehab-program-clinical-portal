@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ChatMessage } from '@/types/chat';
 import { Check, CheckCheck } from 'lucide-react';
 
@@ -7,6 +8,8 @@ interface MessageBubbleProps {
     bubbleShapeClass: string;
     showStatusBlock: boolean;
     formatTime: (dateStr: string) => string;
+    isTimeVisible: boolean;
+    onToggleTime: () => void;
 }
 
 export function MessageBubble({
@@ -14,30 +17,34 @@ export function MessageBubble({
     isOwnMessage,
     bubbleShapeClass,
     showStatusBlock,
-    formatTime
+    formatTime,
+    isTimeVisible,
+    onToggleTime
 }: MessageBubbleProps) {
     return (
         <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'} w-full`}>
-            <div className="max-w-[80%] sm:max-w-[70%] relative group">
-                {/* Message text bubble wrapper */}
+            <div
+                className="max-w-[80%] sm:max-w-[70%] relative group cursor-pointer sm:cursor-auto"
+                onClick={onToggleTime}
+            >
                 <div className={`relative flex items-center w-fit max-w-full ${isOwnMessage ? 'ml-auto' : 'mr-auto'}`}>
                     <div
-                        className={`px-4 py-2.5 text-sm leading-relaxed max-w-full ${
-                            isOwnMessage
-                                ? `bg-primary text-white shadow-xs ${bubbleShapeClass}`
-                                : `bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs ${bubbleShapeClass}`
-                        }`}
+                        className={`px-4.5 py-2.5 text-base leading-relaxed max-w-full ${isOwnMessage
+                            ? `bg-primary text-white shadow-xs ${bubbleShapeClass}`
+                            : `bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs ${bubbleShapeClass}`
+                            }`}
                     >
                         <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-left">
                             {message.body}
                         </p>
                     </div>
 
-                    {/* Time on hover */}
+                    {/* Time Indicator */}
                     <span
-                        className={`absolute ${
-                            isOwnMessage ? 'right-full mr-3' : 'left-full ml-3'
-                        } opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-[10px] font-medium text-slate-400 dark:text-slate-500 whitespace-nowrap select-none cursor-default top-1/2 -translate-y-1/2`}
+                        className={`absolute ${isOwnMessage ? 'right-full mr-3' : 'left-full ml-3'} 
+                            transition-opacity duration-200 text-xs font-medium text-slate-400 dark:text-slate-500 whitespace-nowrap select-none top-1/2 -translate-y-1/2
+                            ${isTimeVisible ? 'opacity-100' : 'opacity-0 sm:group-hover:opacity-100'} 
+                        `}
                     >
                         {formatTime(message.sentAt)}
                     </span>
@@ -46,7 +53,7 @@ export function MessageBubble({
                 {/* Status Block (Time and Checkmarks for staff messages) */}
                 {showStatusBlock && (
                     <div className="flex items-center gap-1 mt-1 px-1 justify-end">
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                        <span className="text-xs text-slate-400 dark:text-slate-500">
                             {formatTime(message.sentAt)}
                         </span>
 
@@ -58,7 +65,7 @@ export function MessageBubble({
                                 {message.readAt ? (
                                     <CheckCheck className="w-3.5 h-3.5" />
                                 ) : (
-                                    <Check className="w-3.5 h-3.5 text-slate-400" />
+                                    <Check className="w-3.5 h-3.5" />
                                 )}
                             </span>
                         )}

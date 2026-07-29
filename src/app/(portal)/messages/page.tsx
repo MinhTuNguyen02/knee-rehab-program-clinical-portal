@@ -6,7 +6,10 @@ export const dynamic = "force-dynamic";
 
 export default async function MessagesPage() {
     const token = await getToken();
-    if (!token) redirect("/login");
+
+    if (!token) {
+        redirect("/login");
+    }
 
     return (
         <div className="space-y-6 h-full flex flex-col">

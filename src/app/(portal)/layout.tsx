@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Activity, Users, ClipboardList, List, X, MessagesSquare } from "lucide-react";
 import { useTransition } from "react";
 import UserMenu from "@/components/ui/UserMenu";
+import NotificationDropdown from "@/components/features/NotificationDropdown";
 
 export default function PortalLayout({
   children,
@@ -83,10 +84,11 @@ export default function PortalLayout({
             <List size={24} />
           </button>
 
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-4">
+            <NotificationDropdown />
+
             <div className="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-800">
               <UserMenu />
-              {/* <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" /> */}
             </div>
           </div>
         </header>

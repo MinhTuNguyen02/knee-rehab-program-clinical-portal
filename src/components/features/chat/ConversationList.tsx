@@ -1,47 +1,37 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Conversation } from '@/types/chat';
 import { ZoneBadge } from '@/components/ui/ZoneBadge';
 import { Search, Dot } from 'lucide-react';
+import { formatSidebarTime } from '@/lib/utils';
 
 interface ConversationListProps {
     conversations: Conversation[];
     selectedId: string | null;
     onSelect: (id: string) => void;
     loading: boolean;
+    onlinePatients: Set<string>;
 }
 
 export function ConversationList({
     conversations,
     selectedId,
     onSelect,
-    loading
+    loading,
+    onlinePatients
 }: ConversationListProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
-    // Helper for relative time formatting
-    const getRelativeTime = (dateStr: string | null) => {
-        if (!dateStr) return '';
-        const date = new Date(dateStr);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / (60 * 1000));
-        const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
-        const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+    const [tick, setTick] = useState(0);
 
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays === 1) return 'Yesterday';
-        if (diffDays < 7) return `${diffDays}d ago`;
-
-        return date.toLocaleDateString('en-GB', {
-            day: 'numeric',
-            month: 'short',
-        });
-    };
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setTick(t => t + 1);
+        }, 60000);
+        return () => clearInterval(timer);
+    }, []);
 
     const getLatestZone = (conv: Conversation) => {
         const assessments = conv.patient?.assessments;
@@ -111,6 +101,7 @@ export function ConversationList({
             {/* List */}
             <div className="flex-1 overflow-y-auto min-h-0 divide-y divide-slate-100 dark:divide-slate-800/60">
                 {loading ? (
+
                     <div className="flex flex-col items-center justify-center py-10 space-y-2">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
                         <p className="text-xs text-slate-500">Loading inbox...</p>
@@ -123,19 +114,25 @@ export function ConversationList({
                     filteredConversations.map(conv => {
                         const isActive = conv.id === selectedId;
                         const latestZone = getLatestZone(conv);
+                        const isOnline = onlinePatients.has(conv.patientId);
 
+                        const timeDisplay = formatSidebarTime(conv.lastMessageAt || conv.createdAt);
                         return (
                             <button
                                 key={conv.id}
                                 onClick={() => onSelect(conv.id)}
                                 className={`w-full text-left p-4 flex flex-col gap-1 transition-all ${isActive
-                                    ? 'bg-primary/5 dark:bg-primary/10 border-l-4 border-primary pl-3'
-                                    : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40 pl-4 border-l-4 border-transparent'
+                                    ? 'bg-primary/10 dark:bg-primary/10 border-l-4 border-primary pl-3'
+                                    : 'hover:bg-slate-100/80 dark:hover:bg-slate-800/40 pl-4 border-l-4 border-transparent'
                                     }`}
                             >
                                 <div className="flex items-center justify-between w-full">
-                                    <span className="font-semibold text-sm text-slate-900 dark:text-white truncate max-w-[140px]">
-                                        {conv.patient?.firstName} {conv.patient?.lastName}
+                                    <span className="font-semibold text-sm text-slate-900 dark:text-white truncate max-w-[130px] flex items-center gap-1.5">
+                                        <span className="truncate">{conv.patient?.firstName} {conv.patient?.lastName}</span>
+                                        <span className={`h-2 w-2 rounded-full shrink-0 ${isOnline ? 'bg-green-500' : 'bg-amber-400'}`} title={isOnline ? 'Online' : 'Offline'} />
+                                        {/* {isOnline && (
+                                            <span className="h-2 w-2 rounded-full shrink-0 bg-green-500" title="Online"></span>
+                                        )} */}
                                     </span>
                                     <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium whitespace-nowrap shrink-0">
                                         <ZoneBadge zone={latestZone} />
@@ -151,15 +148,17 @@ export function ConversationList({
                                             {conv.lastMessage?.senderType === 'staff' ? 'You: ' : ''}
                                             {conv.lastMessage?.body || 'Start the conversation'}
                                         </p>
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium whitespace-nowrap shrink-0 flex items-center ml-0.5">
+                                        <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium whitespace-nowrap shrink-0 flex items-center ml-0.5">
                                             <Dot className="inline" />
-                                            {getRelativeTime(conv.lastMessageAt || conv.createdAt)}
+                                            {timeDisplay}
                                         </span>
                                     </div>
                                     {conv.unreadCount > 0 && (
-                                        <span className="h-5 min-w-[20px] px-1.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold shrink-0">
-                                            {conv.unreadCount}
-                                        </span>
+                                        <>
+                                            <span className="h-5 min-w-[20px] px-1.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold shrink-0">
+                                                {conv.unreadCount}
+                                            </span>
+                                        </>
                                     )}
                                 </div>
                             </button>
