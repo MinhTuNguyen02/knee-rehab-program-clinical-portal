@@ -19,8 +19,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "Clinical Portal - Knee Rehab Program",
-  description: "Admin portal for managing patient assessments and leads",
+  title: "KRPS - Clinical Portal",
+  description: "Clinical portal for managing patient assessments and leads",
 };
 
 export default function RootLayout({

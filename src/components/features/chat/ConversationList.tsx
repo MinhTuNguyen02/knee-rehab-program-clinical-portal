@@ -129,10 +129,10 @@ export function ConversationList({
                                 <div className="flex items-center justify-between w-full">
                                     <span className="font-semibold text-sm text-slate-900 dark:text-white truncate max-w-[130px] flex items-center gap-1.5">
                                         <span className="truncate">{conv.patient?.firstName} {conv.patient?.lastName}</span>
-                                        <span className={`h-2 w-2 rounded-full shrink-0 ${isOnline ? 'bg-green-500' : 'bg-amber-400'}`} title={isOnline ? 'Online' : 'Offline'} />
-                                        {/* {isOnline && (
+                                        {/* <span className={`h-2 w-2 rounded-full shrink-0 ${isOnline ? 'bg-green-500' : 'bg-amber-400'}`} title={isOnline ? 'Online' : 'Offline'} /> */}
+                                        {isOnline && (
                                             <span className="h-2 w-2 rounded-full shrink-0 bg-green-500" title="Online"></span>
-                                        )} */}
+                                        )}
                                     </span>
                                     <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium whitespace-nowrap shrink-0">
                                         <ZoneBadge zone={latestZone} />

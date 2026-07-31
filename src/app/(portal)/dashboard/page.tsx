@@ -1,11 +1,12 @@
 import { fetchWithAuth } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { KPICard } from "@/components/ui/KPICard";
-import { DashboardChartsClient } from "@/components/data-display/DashboardChartsClient";
 import { RecentAssessmentsClient } from "@/components/features/RecentAssessmentsClient";
 import { ChartLineUp, Users, PresentationChart, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import dynamic from 'next/dynamic';
+import { DashboardCharts } from '@/components/data-display/DashboardCharts';
 
 export default async function DashboardPage() {
   // throw new Error("Please wait for a while");
@@ -23,9 +24,7 @@ export default async function DashboardPage() {
 
     const stats = statsRes.data || statsRes;
 
-    const conversionRate = stats.totalSubmissions > 0
-      ? Math.round((stats.totalOptedIn / stats.totalSubmissions) * 100)
-      : 0;
+    const conversionRate = stats.conversionRate || 0;
 
     const totalRed = stats.byZone?.red || 0;
 
@@ -54,6 +53,7 @@ export default async function DashboardPage() {
             title="Conversion Rate"
             value={`${conversionRate}%`}
             icon={<PresentationChart size={20} />}
+            description="Assessment takers who opted in"
           />
           <KPICard
             title="Red Zone Alerts"
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
           />
         </div>
 
-        <DashboardChartsClient stats={stats} />
+        <DashboardCharts stats={stats} />
 
         {/* Recent Assessments */}
         <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">

@@ -30,6 +30,7 @@ export interface ChatMessage {
     body: string;
     sentAt: string;
     readAt: string | null;
+    isPending?: boolean;
 }
 
 export interface Conversation {

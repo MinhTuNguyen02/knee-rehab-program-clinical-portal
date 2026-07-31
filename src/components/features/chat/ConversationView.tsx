@@ -8,6 +8,7 @@ import { ZoneBadge } from '@/components/ui/ZoneBadge';
 import { PatientSlideOver } from '@/components/management/PatientSlideOver';
 import { Send, MessageSquare, AlertCircle, Info, ArrowLeft, ChevronDown } from 'lucide-react';
 import { formatDateDivider, formatBubbleTime } from '@/lib/utils';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface ConversationViewProps {
     conversation: Conversation | null;
@@ -34,13 +35,12 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
     const [inputText, setInputText] = useState('');
     const [showSlideOverPatientId, setShowSlideOverPatientId] = useState<string | null>(null);
 
-    const messageListRef = useRef<HTMLDivElement>(null);
+    const parentRef = useRef<HTMLDivElement>(null);
     const previousHeightRef = useRef<number>(0);
     const lastMessageIdRef = useRef<string | null>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
     const [activeTimeMsgId, setActiveTimeMsgId] = useState<string | null>(null);
-
     const [showScrollButton, setShowScrollButton] = useState(false);
 
     // Identify last read staff message
@@ -49,51 +49,104 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
         return lastReadMsg ? lastReadMsg.id : null;
     }, [messages]);
 
-    // Scroll to bottom on initial load and when new messages are added
-    useEffect(() => {
-        if (!loading && messages.length > 0) {
-            const currentLastMsg = messages[messages.length - 1];
-            if (lastMessageIdRef.current !== currentLastMsg.id) {
-                setTimeout(scrollToBottom, 50);
+    // Flatten data
+    const flatItems = useMemo(() => {
+        const items: any[] = [];
+        let currentDateKey: string | null = null;
+
+        messages.forEach((msg, index) => {
+            const dateKey = formatDateDivider(msg.sentAt);
+
+            if (dateKey !== currentDateKey) {
+                items.push({ type: 'date', id: `date-${dateKey}`, dateStr: dateKey });
+                currentDateKey = dateKey;
             }
-            lastMessageIdRef.current = currentLastMsg.id;
-        }
-    }, [loading, messages]);
+
+            const prevMsg = messages[index - 1];
+            const nextMsg = messages[index + 1];
+            const FIVE_MINUTES = 5 * 60 * 1000;
+
+            const isOwnMessage = msg.senderType === 'staff';
+
+            const isFirstInGroup = !prevMsg ||
+                prevMsg.senderType !== msg.senderType ||
+                (new Date(msg.sentAt).getTime() - new Date(prevMsg.sentAt).getTime() > FIVE_MINUTES) ||
+                formatDateDivider(prevMsg.sentAt) !== dateKey;
+
+            const isLastInGroup = !nextMsg ||
+                nextMsg.senderType !== msg.senderType ||
+                (new Date(nextMsg.sentAt).getTime() - new Date(msg.sentAt).getTime() > FIVE_MINUTES) ||
+                formatDateDivider(nextMsg.sentAt) !== dateKey;
+
+            const isAbsoluteLastMsg = index === messages.length - 1 && isOwnMessage;
+            const isLastReadMsg = msg.id === lastReadStaffMsgId;
+            const showStatusBlock = isAbsoluteLastMsg || (isOwnMessage && isLastReadMsg);
+
+            items.push({
+                type: 'message',
+                id: msg.id,
+                message: msg,
+                isOwnMessage,
+                isFirstInGroup,
+                isLastInGroup,
+                showStatusBlock
+            });
+        });
+
+        return items;
+    }, [messages, lastReadStaffMsgId]);
+
+    // Virtualizer
+    const virtualizer = useVirtualizer({
+        count: flatItems.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: () => 80,
+        overscan: 10,
+    });
 
     const scrollToBottom = (smooth = false) => {
-        if (messageListRef.current) {
-            if (smooth) {
-                messageListRef.current.scrollTo({
-                    top: messageListRef.current.scrollHeight,
-                    behavior: 'smooth'
-                })
-            } else {
-                messageListRef.current.scrollTop = messageListRef.current.scrollHeight
-            }
-
+        if (flatItems.length > 0) {
+            virtualizer.scrollToIndex(flatItems.length - 1, {
+                align: 'end',
+                behavior: smooth ? 'smooth' : 'auto'
+            });
             setShowScrollButton(false);
         }
     };
 
+    const lastItemId = flatItems.length > 0 ? flatItems[flatItems.length - 1].id : null;
+
+    useEffect(() => {
+        if (!loading && lastItemId) {
+            if (lastMessageIdRef.current !== lastItemId) {
+                requestAnimationFrame(() => scrollToBottom());
+                lastMessageIdRef.current = lastItemId;
+            }
+        }
+    }, [loading, lastItemId]);
+
+    useEffect(() => {
+        if (isPatientTyping && !showScrollButton) scrollToBottom(true);
+    }, [isPatientTyping])
+
+    // Load More
     const handleScroll = async (e: UIEvent<HTMLDivElement>) => {
         const target = e.currentTarget;
-
         const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+
         setShowScrollButton(distanceFromBottom > 50);
 
         if (loadingMore || !hasMore) return;
 
-        if (target.scrollTop <= 1 && messages.length > 0) {
+        if (target.scrollTop <= 1 && flatItems.length > 0) {
             previousHeightRef.current = target.scrollHeight;
             await loadMore();
-
-            // Adjust scroll position to keep focus
             setTimeout(() => {
-                if (messageListRef.current) {
-                    const newHeight = messageListRef.current.scrollHeight;
-                    messageListRef.current.scrollTop = newHeight - previousHeightRef.current;
+                if (parentRef.current) {
+                    const newHeight = parentRef.current.scrollHeight;
+                    parentRef.current.scrollTop = newHeight - previousHeightRef.current;
                 }
-            }, 100);
+            }, 0);
         }
     };
 
@@ -116,11 +169,11 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
             inputRef.current.style.height = 'auto';
         }
         inputRef.current?.focus();
-        setTimeout(scrollToBottom, 10);
+        scrollToBottom();
 
         try {
             await sendMessage(text);
-            setTimeout(scrollToBottom, 50);
+            scrollToBottom();
         } catch (err) {
             setInputText(text);
         }
@@ -133,17 +186,6 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
         }
     };
 
-    // Helper functions for dates
-    const groupMessagesByDay = (msgs: typeof messages) => {
-        const groups: { [key: string]: typeof messages } = {};
-        msgs.forEach(msg => {
-            const dateKey = formatDateDivider(msg.sentAt);
-            if (!groups[dateKey]) groups[dateKey] = [];
-            groups[dateKey].push(msg);
-        });
-        return Object.entries(groups);
-    };
-
     const getLatestZone = (conv: Conversation) => {
         const assessments = conv.patient?.assessments;
         if (!assessments || assessments.length === 0) return 'unknown';
@@ -153,7 +195,6 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
         return sorted[0]?.zone || 'unknown';
     };
 
-    // Empty state
     if (!conversation) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-950/20 h-full">
@@ -173,13 +214,12 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
     return (
         <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-900 overflow-hidden relative">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-md z-10 relative">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 shadow-md z-20 relative">
                 <div className="flex items-center gap-3">
                     {onBack && (
                         <button
                             onClick={onBack}
                             className="md:hidden p-1.5 -ml-1 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                            aria-label="Back to messages list"
                         >
                             <ArrowLeft className="h-5 w-5" />
                         </button>
@@ -187,7 +227,8 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                     <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold shadow-sm text-sm border border-primary/20">
                         {conversation.patient?.firstName?.[0]?.toUpperCase()}
                         {conversation.patient?.lastName?.[0]?.toUpperCase()}
-                        <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-slate-900 ${isPatientOnline ? 'bg-green-500' : 'bg-amber-400'}`} />
+                        {isPatientOnline && (<span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-slate-900 bg-green-500" />)}
+                        {/* <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-slate-900 bg-green-500 ${isPatientOnline ? 'bg-green-500' : 'bg-amber-400'}`} /> */}
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
@@ -202,7 +243,6 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                     </div>
                 </div>
 
-                {/* Patient Profile Overlay Trigger */}
                 <button
                     onClick={() => setShowSlideOverPatientId(conversation.patientId)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
@@ -212,18 +252,23 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                 </button>
             </div>
 
-            {/* Chat Body */}
+            {/* Chat Body (Virtual Scroll Area) */}
             <div className="flex-1 relative min-h-0 flex flex-col bg-slate-50/50 dark:bg-slate-900/30">
                 <div
-                    ref={messageListRef}
+                    ref={parentRef}
                     onScroll={handleScroll}
-                    className="flex-1 overflow-y-auto px-6 py-4 bg-slate-50/50 dark:bg-slate-900/30"
+                    className="flex-1 overflow-y-auto relative p-4"
                 >
-                    {/* Reconnection Banner */}
                     {isReconnecting && (
-                        <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2 flex items-center justify-center gap-2 mb-4 mx-auto max-w-sm">
+                        <div className="sticky top-4 z-10 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-2 flex items-center justify-center gap-2 mb-4 mx-auto max-w-sm shadow-sm">
                             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-amber-600 dark:border-amber-500"></div>
                             <span className="text-xs font-medium text-amber-700 dark:text-amber-500">Reconnecting...</span>
+                        </div>
+                    )}
+
+                    {loadingMore && (
+                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 bg-white/80 dark:bg-slate-800/80 p-2 rounded-full shadow-sm backdrop-blur-sm">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                         </div>
                     )}
 
@@ -243,7 +288,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                             </div>
                         </div>
                     ) : messages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 px-4 text-center space-y-4 h-full">
+                        <div className="flex flex-col items-center justify-center h-full py-16 px-4 text-center space-y-4">
                             <div className="p-4 bg-primary/5 rounded-full text-primary">
                                 <MessageSquare className="w-10 h-10 opacity-70" />
                             </div>
@@ -255,87 +300,61 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                             </div>
                         </div>
                     ) : (
-                        groupMessagesByDay(messages).map(([dayKey, dayMsgs]) => (
-                            <div key={dayKey} className="flex flex-col">
-                                {/* Date Header */}
-                                <div className="flex justify-center mt-6 mb-4">
-                                    <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-700/50 shadow-2xs uppercase tracking-wider">
-                                        {dayKey}
-                                    </span>
-                                </div>
+                        <div
+                            style={{
+                                height: `${virtualizer.getTotalSize()}px`,
+                                width: '100%',
+                                position: 'relative',
+                            }}
+                        >
+                            {virtualizer.getVirtualItems().map((virtualRow) => {
+                                const item = flatItems[virtualRow.index];
 
-                                {dayMsgs.map((msg, index) => {
-                                    const isOwnMessage = msg.senderType === 'staff';
-                                    const prevMsg = dayMsgs[index - 1];
-                                    const nextMsg = dayMsgs[index + 1];
-
-                                    const FIVE_MINUTES = 5 * 60 * 1000;
-
-                                    const isFirstInGroup = !prevMsg ||
-                                        prevMsg.senderType !== msg.senderType ||
-                                        (new Date(msg.sentAt).getTime() - new Date(prevMsg.sentAt).getTime() > FIVE_MINUTES);
-
-                                    const isLastInGroup = !nextMsg ||
-                                        nextMsg.senderType !== msg.senderType ||
-                                        (new Date(nextMsg.sentAt).getTime() - new Date(msg.sentAt).getTime() > FIVE_MINUTES);
-
-                                    const isAbsoluteLastMsg = msg.id === messages[messages.length - 1].id && isOwnMessage;
-                                    const isLastReadMsg = msg.id === lastReadStaffMsgId;
-                                    const showStatusBlock = isAbsoluteLastMsg || (isOwnMessage && isLastReadMsg);
-
-                                    // Flipped bubble corner shape relative to patient app
-                                    let bubbleShapeClass = 'rounded-2xl';
-                                    if (isOwnMessage) { // Staff (Right side)
-                                        if (isFirstInGroup && isLastInGroup) {
-                                            bubbleShapeClass;
-                                        } else if (isFirstInGroup) {
-                                            bubbleShapeClass += ' rounded-br-xs';
-                                        } else if (isLastInGroup) {
-                                            bubbleShapeClass += ' rounded-tr-xs';
-                                        } else {
-                                            bubbleShapeClass += ' rounded-tr-xs rounded-br-xs';
-                                        }
-                                    } else { // Patient (Left side)
-                                        if (isFirstInGroup && isLastInGroup) {
-                                            bubbleShapeClass;
-                                        } else if (isFirstInGroup) {
-                                            bubbleShapeClass += ' rounded-bl-xs';
-                                        } else if (isLastInGroup) {
-                                            bubbleShapeClass += ' rounded-tl-xs';
-                                        } else {
-                                            bubbleShapeClass += ' rounded-tl-xs rounded-bl-xs';
-                                        }
-                                    }
-
-                                    const marginTopClass = index === 0 ? '' : isFirstInGroup ? 'mt-6' : 'mt-1';
-
-                                    return (
-                                        <div key={msg.id} className={`${marginTopClass} w-full`}>
-                                            {/* Sender name for patient bubbles */}
-                                            {!isOwnMessage && isFirstInGroup && (
-                                                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 ml-1.5 mb-1 block text-left">
-                                                    {patientName}
+                                return (
+                                    <div
+                                        key={item.id}
+                                        data-index={virtualRow.index}
+                                        ref={virtualizer.measureElement}
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            transform: `translateY(${virtualRow.start}px)`,
+                                        }}
+                                        className="px-2"
+                                    >
+                                        {item.type === 'date' ? (
+                                            <div className="flex justify-center pt-6 pb-4">
+                                                <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-700/50 shadow-2xs uppercase tracking-wider">
+                                                    {item.dateStr}
                                                 </span>
-                                            )}
+                                            </div>
+                                        ) : (
+                                            <div className={`w-full ${item.isFirstInGroup ? 'pt-6' : ''} pb-1`}>
+                                                {!item.isOwnMessage && item.isFirstInGroup && (
+                                                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 ml-1.5 mb-1 block text-left">
+                                                        {patientName}
+                                                    </span>
+                                                )}
 
-                                            <MessageBubble
-                                                message={msg}
-                                                isOwnMessage={isOwnMessage}
-                                                bubbleShapeClass={bubbleShapeClass}
-                                                showStatusBlock={showStatusBlock}
-                                                formatTime={formatBubbleTime}
-                                                isTimeVisible={activeTimeMsgId === msg.id}
-                                                onToggleTime={() => setActiveTimeMsgId(prev => prev === msg.id ? null : msg.id)}
-                                            />
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ))
-                    )}
-                    {loadingMore && (
-                        <div className="flex justify-center py-2 shrink-0">
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                                                <MessageBubble
+                                                    message={item.message}
+                                                    isOwnMessage={item.isOwnMessage}
+                                                    bubbleShapeClass={`rounded-2xl ${item.isOwnMessage
+                                                        ? (item.isFirstInGroup && item.isLastInGroup ? '' : item.isFirstInGroup ? 'rounded-br-xs' : item.isLastInGroup ? 'rounded-tr-xs' : 'rounded-tr-xs rounded-br-xs')
+                                                        : (item.isFirstInGroup && item.isLastInGroup ? '' : item.isFirstInGroup ? 'rounded-bl-xs' : item.isLastInGroup ? 'rounded-tl-xs' : 'rounded-tl-xs rounded-bl-xs')
+                                                        }`}
+                                                    showStatusBlock={item.showStatusBlock}
+                                                    formatTime={formatBubbleTime}
+                                                    isTimeVisible={activeTimeMsgId === item.id}
+                                                    onToggleTime={() => setActiveTimeMsgId(prev => prev === item.id ? null : item.id)}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -352,13 +371,13 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                     </div>
                 )}
 
+                {/* Scroll to bottom button */}
                 <button
                     onClick={() => scrollToBottom(true)}
                     className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center justify-center w-9 h-9 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md rounded-full text-slate-500 hover:text-primary transition-all duration-300 z-20 ${showScrollButton
                         ? 'opacity-100 translate-y-0'
                         : 'opacity-0 translate-y-4 pointer-events-none'
                         }`}
-                    aria-label="Scroll to bottom"
                 >
                     {isPatientTyping ? (
                         <div className="flex gap-1">
@@ -366,15 +385,11 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                             <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
                             <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce"></span>
                         </div>) : <ChevronDown className="w-5 h-5" />}
-
                 </button>
             </div>
 
             {/* Input Form */}
-            <form
-                onSubmit={handleSendMessage}
-                className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0"
-            >
+            <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-20 relative">
                 <div className="flex items-end gap-3 max-w-4xl mx-auto">
                     <textarea
                         ref={inputRef}
@@ -390,18 +405,13 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                         type="submit"
                         disabled={!inputText.trim() || sending || isReconnecting}
                         className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary hover:bg-primary-hover active:scale-[0.97] transition-all text-white disabled:opacity-30 disabled:pointer-events-none shadow-md shrink-0 shadow-primary/10 cursor-pointer"
-                        aria-label="Send message"
                     >
                         <Send className="w-4.5 h-4.5" />
                     </button>
                 </div>
             </form>
 
-            {/* Reuse PatientSlideOver drawer for patient details */}
-            <PatientSlideOver
-                patientId={showSlideOverPatientId}
-                onClose={() => setShowSlideOverPatientId(null)}
-            />
+            <PatientSlideOver patientId={showSlideOverPatientId} onClose={() => setShowSlideOverPatientId(null)} />
         </div>
     );
 }

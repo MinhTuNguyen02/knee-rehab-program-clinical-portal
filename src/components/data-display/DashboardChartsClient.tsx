@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -54,7 +53,7 @@ export function DashboardChartsClient({ stats }: { stats: any }) {
                 return val.replace(/\s\d{4}$/, ''); // "12 Jun 2026" -> "12 Jun"
               }} />
               <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
-              <RechartsTooltip 
+              <RechartsTooltip
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
               />
             </LineChart>
@@ -83,7 +82,7 @@ export function DashboardChartsClient({ stats }: { stats: any }) {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <RechartsTooltip 
+                <RechartsTooltip
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   itemStyle={{ color: '#0f172a' }}
                 />
