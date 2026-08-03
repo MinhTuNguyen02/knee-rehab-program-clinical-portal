@@ -149,23 +149,14 @@ function MessagesClientInner() {
     const handleSelectConversation = (id: string) => {
         setSelectedConversationId(id);
 
-        window.dispatchEvent(new CustomEvent('chat_opened', { detail: id }));
-
         // Reset unread count locally for immediate response
         setConversations(prev =>
             prev.map(c => (c.id === id ? { ...c, unreadCount: 0 } : c))
         );
     };
 
-    useEffect(() => {
-        return () => {
-            window.dispatchEvent(new Event('chat_closed'));
-        };
-    }, []);
-
     const handleBack = () => {
         setSelectedConversationId(null);
-        window.dispatchEvent(new Event('chat_closed'));
     };
 
     return (

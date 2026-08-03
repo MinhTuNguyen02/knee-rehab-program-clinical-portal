@@ -104,7 +104,7 @@ export function useStaffNotifications() {
             mutateList((prev) => prev?.map(n => ({ ...n, readAt: new Date().toISOString() })), false);
             mutateCount({ count: 0 }, false);
 
-            const res = await fetch('/api/staff/notifications/read-all', { method: 'PATCH' });
+            const res = await fetch('/api/staff/notifications', { method: 'PATCH' });
             if (!res.ok) throw new Error('Failed to mark all as read');
         } catch (err) {
             console.error(err);
@@ -139,11 +139,16 @@ export function useStaffNotifications() {
         }
     }, [mutateList, mutateCount]);
 
+    const notificationsDataRef = useRef(notificationsData);
+    useEffect(() => {
+        notificationsDataRef.current = notificationsData;
+    }, [notificationsData]);
+
     useEffect(() => {
         const handleChatOpened = (e: CustomEvent) => {
             const cid = e.detail;
             activeConversationIdRef.current = cid;
-            checkAndClearUnread(cid, notificationsData);
+            checkAndClearUnread(cid, notificationsDataRef.current);
         };
         const handleChatClosed = () => {
             activeConversationIdRef.current = null;
@@ -156,7 +161,7 @@ export function useStaffNotifications() {
             window.removeEventListener('chat_opened', handleChatOpened as EventListener);
             window.removeEventListener('chat_closed', handleChatClosed);
         };
-    }, [notificationsData, checkAndClearUnread]);
+    }, [checkAndClearUnread]);
 
     useEffect(() => {
         checkAndClearUnread(activeConversationIdRef.current, notificationsData);

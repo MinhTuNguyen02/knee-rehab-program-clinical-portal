@@ -43,6 +43,16 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
     const [activeTimeMsgId, setActiveTimeMsgId] = useState<string | null>(null);
     const [showScrollButton, setShowScrollButton] = useState(false);
 
+    useEffect(() => {
+        if (conversation?.id) {
+            window.dispatchEvent(new CustomEvent('chat_opened', { detail: conversation.id }));
+        }
+
+        return () => {
+            window.dispatchEvent(new Event('chat_closed'));
+        };
+    }, [conversation?.id]);
+
     // Identify last read staff message
     const lastReadStaffMsgId = useMemo(() => {
         const lastReadMsg = [...messages].reverse().find(m => m.senderType === 'staff' && m.readAt);
