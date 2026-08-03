@@ -31,6 +31,7 @@ export interface ChatMessage {
     sentAt: string;
     readAt: string | null;
     isPending?: boolean;
+    client_timestamp?: number;
 }
 
 export interface Conversation {

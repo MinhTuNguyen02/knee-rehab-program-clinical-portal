@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { v4 as uuidv4 } from 'uuid';
 import { ChatMessage } from '@/types/chat';
 import { useSocket } from './useSocket';
 
@@ -18,22 +19,48 @@ export function useStaffChat(conversationId: string | null) {
     const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Offline queue: stored in ref (no re-render on mutation)
-    // flushCounter: state that triggers the flush effect
-    const pendingQueueRef = useRef<{ id: string; body: string }[]>([]);
+    // Offline queue: stored in ref and synced to localStorage
+    const pendingQueueRef = useRef<{ id: string; body: string; client_timestamp: number }[]>([]);
     const isFlushingRef = useRef(false);
     const [flushTrigger, setFlushTrigger] = useState(0);
 
-    // Keep latest message timestamp updated for polling
+    // 1. Calculate latest timestamp for polling based ONLY on confirmed messages
     useEffect(() => {
-        if (messages.length > 0) {
+        const confirmedMessages = messages.filter(m => !m.isPending);
+        if (confirmedMessages.length > 0) {
             latestSentAtRef.current = new Date(
-                Math.max(...messages.map(m => new Date(m.sentAt).getTime()))
+                Math.max(...confirmedMessages.map(m => new Date(m.sentAt).getTime()))
             ).toISOString();
         } else {
             latestSentAtRef.current = null;
         }
     }, [messages]);
+
+    // Helper to sync queue to localStorage
+    const syncQueueToStorage = useCallback((queue: any[]) => {
+        if (!conversationId) return;
+        try {
+            localStorage.setItem(`staff_chat_queue_${conversationId}`, JSON.stringify(queue));
+        } catch (e) {
+            console.error('Failed to sync offline queue to storage');
+        }
+    }, [conversationId]);
+
+    // 2. Restore queue from localStorage on mount/conversation change
+    useEffect(() => {
+        if (!conversationId) return;
+        try {
+            const savedQueue = localStorage.getItem(`staff_chat_queue_${conversationId}`);
+            if (savedQueue) {
+                pendingQueueRef.current = JSON.parse(savedQueue);
+                if (pendingQueueRef.current.length > 0 && isConnected) {
+                    setFlushTrigger(n => n + 1);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to parse offline queue');
+        }
+    }, [conversationId, isConnected]);
 
     // WebSocket event listeners
     useEffect(() => {
@@ -164,10 +191,11 @@ export function useStaffChat(conversationId: string | null) {
     useEffect(() => {
         if (isConnected && socket && conversationId) {
             setFlushTrigger(n => n + 1);
+            markAsRead();
         }
     }, [isConnected, socket, conversationId]);
 
-    // Flush pending queue — runs whenever flushTrigger increments
+    // 4. Flush Queue (FIFO, strictly handles socket communication)
     useEffect(() => {
         if (!isConnected || !socket || !conversationId) return;
         if (pendingQueueRef.current.length === 0) return;
@@ -182,13 +210,14 @@ export function useStaffChat(conversationId: string | null) {
                 const pending = pendingQueueRef.current[0];
 
                 try {
-                    const newMessage: ChatMessage = await new Promise((resolve, reject) => {
+                    const ackMessage: ChatMessage = await new Promise((resolve, reject) => {
                         const timer = setTimeout(() => reject(new Error('Timeout')), 8000);
 
                         socket.emit('message:send', {
                             conversationId,
+                            id: pending.id,
+                            client_timestamp: pending.client_timestamp,
                             body: pending.body,
-                            tempId: pending.id,
                         }, (response: any) => {
                             clearTimeout(timer);
                             if (response?.id) resolve(response);
@@ -199,11 +228,12 @@ export function useStaffChat(conversationId: string | null) {
 
                     // Remove from queue only after success
                     pendingQueueRef.current = pendingQueueRef.current.slice(1);
+                    syncQueueToStorage(pendingQueueRef.current);
 
                     // Replace optimistic message with confirmed message
                     setMessages(prev => {
                         const mapped = prev.map(m =>
-                            m.id === pending.id ? { ...newMessage, isPending: false } : m
+                            m.id === pending.id ? { ...ackMessage, isPending: false } : m
                         );
                         // Dedup: keep first occurrence of each real id
                         const seen = new Set<string>();
@@ -227,9 +257,7 @@ export function useStaffChat(conversationId: string | null) {
         };
 
         flushQueue();
-    // flushTrigger is NOT a dep here — it's only used to re-run via the
-    // effect above. This effect re-runs when socket/conversationId changes.
-    }, [flushTrigger, socket, isConnected, conversationId]);
+    }, [flushTrigger, socket, isConnected, conversationId, syncQueueToStorage]);
 
     const emitTyping = useCallback(() => {
         if (!conversationId || !isConnected || !socket) return;
@@ -242,6 +270,7 @@ export function useStaffChat(conversationId: string | null) {
         }, 3000);
     }, [conversationId, isConnected, socket]);
 
+    // 3. Send Message Logic: Only updates Optimistic UI and enqueues
     const sendMessage = async (body: string) => {
         if (!conversationId || !body.trim()) return;
 
@@ -249,9 +278,10 @@ export function useStaffChat(conversationId: string | null) {
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         if (socket && isConnected) socket.emit('typing:stop', { conversationId });
 
-        const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const realUuid = uuidv4();
+        const clientTimestamp = Date.now();
         const optimisticMessage: ChatMessage = {
-            id: tempId,
+            id: realUuid,
             conversationId,
             senderType: 'staff',
             senderId: 'optimistic',
@@ -259,62 +289,27 @@ export function useStaffChat(conversationId: string | null) {
             sentAt: new Date().toISOString(),
             readAt: null,
             isPending: true,
+            client_timestamp: clientTimestamp,
         };
 
         // Always show optimistic message immediately
         setMessages(prev => [...prev, optimisticMessage]);
 
-        if (isConnected && socket) {
-            // Online path: send via socket, await ACK
-            setSending(true);
-            try {
-                const newMessage: ChatMessage = await new Promise((resolve, reject) => {
-                    const timer = setTimeout(() => reject(new Error('Timeout')), 8000);
+        // Add to persistent queue
+        pendingQueueRef.current = [...pendingQueueRef.current, { id: realUuid, body: body.trim(), client_timestamp: clientTimestamp }];
+        syncQueueToStorage(pendingQueueRef.current);
 
-                    socket.emit('message:send', {
-                        conversationId,
-                        body: body.trim(),
-                        tempId,
-                    }, (response: any) => {
-                        clearTimeout(timer);
-                        if (response?.id) resolve(response);
-                        else if (response?.data?.id) resolve(response.data);
-                        else reject(new Error(response?.error?.message || 'Invalid response'));
-                    });
-                });
-
-                setMessages(prev => {
-                    const mapped = prev.map(m =>
-                        m.id === tempId ? { ...newMessage, isPending: false } : m
-                    );
-                    const seen = new Set<string>();
-                    return mapped.filter(m => {
-                        if (seen.has(m.id)) return false;
-                        seen.add(m.id);
-                        return true;
-                    });
-                });
-            } catch (err: any) {
-                // Socket send failed → queue for retry
-                toast.error('Network error. Message queued.');
-                pendingQueueRef.current = [...pendingQueueRef.current, { id: tempId, body: body.trim() }];
-            } finally {
-                setSending(false);
-            }
-        } else {
-            // Offline path: queue immediately, DON'T block with sending flag
-            pendingQueueRef.current = [...pendingQueueRef.current, { id: tempId, body: body.trim() }];
-            // No toast — message is visible as pending in UI
-        }
+        // Trigger flush (if connected, the flushQueue effect will pick this up)
+        setFlushTrigger(n => n + 1);
     };
 
     const loadMore = async () => {
         if (!conversationId || loadingMore || !hasMore || messages.length === 0) return;
         setLoadingMore(true);
         try {
-            const oldestSentAt = messages[0].sentAt;
+            const oldestClientTimestamp = messages[0].client_timestamp;
             const res = await fetch(
-                `/api/chat/conversations/${conversationId}/messages?before=${encodeURIComponent(oldestSentAt)}&limit=20`
+                `/api/chat/conversations/${conversationId}/messages?before=${oldestClientTimestamp}&limit=20`
             );
             const data = await res.json();
             if (!res.ok) throw new Error(data.error?.message || 'Failed to load older messages');

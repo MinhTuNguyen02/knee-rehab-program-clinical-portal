@@ -104,7 +104,7 @@ export function useStaffNotifications() {
             mutateList((prev) => prev?.map(n => ({ ...n, readAt: new Date().toISOString() })), false);
             mutateCount({ count: 0 }, false);
 
-            const res = await fetch('/api/staff/notifications', { method: 'PATCH' });
+            const res = await fetch('/api/staff/notifications/read-all', { method: 'PATCH' });
             if (!res.ok) throw new Error('Failed to mark all as read');
         } catch (err) {
             console.error(err);
