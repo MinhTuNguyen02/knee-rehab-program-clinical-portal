@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useTransition } from "react";
-import { WarningCircle, CircleNotch } from "@phosphor-icons/react";
+import { WarningCircle, CircleNotch, WifiSlash } from "@phosphor-icons/react";
 
 export default function Error({
   error,
@@ -16,19 +16,21 @@ export default function Error({
     console.error(error);
   }, [error]);
 
+  const isNetworkError = error.message?.toLowerCase().includes("failed to fetch") || error.message?.toLowerCase().includes("network");
+
   return (
     <div className="flex-1 flex items-center justify-center p-8">
       <div className="w-full max-w-md space-y-6 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/10">
-          <WarningCircle className="h-8 w-8 text-red-600 dark:text-red-500" />
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-500">
+          {isNetworkError ? <WifiSlash className="h-8 w-8" /> : <WarningCircle className="h-8 w-8" />}
         </div>
         
         <div className="space-y-2">
           <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Page Error
+            {isNetworkError ? "No connection" : "Something went wrong"}
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            We couldn't load this page. {error.message || "Something went wrong."}
+            {isNetworkError ? "Please check your network." : "We couldn't load this page. Please try again."}
           </p>
         </div>
 

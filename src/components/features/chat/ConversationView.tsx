@@ -383,6 +383,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
 
                 {/* Scroll to bottom button */}
                 <button
+                    aria-label="Scroll to bottom"
                     onClick={() => scrollToBottom(true)}
                     className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center justify-center w-9 h-9 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md rounded-full text-slate-500 hover:text-primary transition-all duration-300 z-20 ${showScrollButton
                         ? 'opacity-100 translate-y-0'
@@ -412,6 +413,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                         className="flex-1 resize-none overflow-y-auto max-h-[150px] min-h-[44px] px-4 py-2.5 bg-slate-50 hover:bg-slate-100/60 dark:bg-slate-800/50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white dark:focus:bg-slate-800 text-sm text-slate-900 dark:text-white transition-all disabled:opacity-50"
                     />
                     <button
+                        aria-label="Send message"
                         type="submit"
                         disabled={!inputText.trim() || sending || isReconnecting}
                         className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary hover:bg-primary-hover active:scale-[0.97] transition-all text-white disabled:opacity-30 disabled:pointer-events-none shadow-md shrink-0 shadow-primary/10 cursor-pointer"
