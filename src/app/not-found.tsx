@@ -1,14 +1,14 @@
 import Link from 'next/link';
-import { Question } from '@phosphor-icons/react/dist/ssr';
+import { FileQuestion } from 'lucide-react';
 
 export default function NotFound() {
     return (
         <div className="flex-1 flex items-center justify-center p-8 bg-slate-50 dark:bg-slate-950 min-h-[100dvh]">
             <div className="w-full max-w-md space-y-6 text-center">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/10">
-                    <Question className="h-8 w-8 text-blue-600 dark:text-blue-500" />
+                    <FileQuestion className="h-8 w-8 text-blue-600 dark:text-blue-500" />
                 </div>
-                
+
                 <div className="space-y-2">
                     <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
                         Page not found
