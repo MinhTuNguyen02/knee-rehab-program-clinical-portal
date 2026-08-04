@@ -233,7 +233,7 @@ export function useStaffChat(conversationId: string | null) {
                     // Replace optimistic message with confirmed message
                     setMessages(prev => {
                         const mapped = prev.map(m =>
-                            m.id === pending.id ? { ...ackMessage, isPending: false } : m
+                            m.id === pending.id ? { ...ackMessage, isPending: false, sentAt: m.sentAt } : m
                         );
                         // Dedup: keep first occurrence of each real id
                         const seen = new Set<string>();
@@ -258,6 +258,37 @@ export function useStaffChat(conversationId: string | null) {
 
         flushQueue();
     }, [flushTrigger, socket, isConnected, conversationId, syncQueueToStorage]);
+
+    useEffect(() => {
+        if (isConnected && messages.length > 0) {
+            const fetchMissedMessages = async () => {
+                try {
+
+                    const query = latestSentAtRef.current
+                        ? `?after=${encodeURIComponent(latestSentAtRef.current)}`
+                        : '';
+
+                    const res = await fetch(`/api/chat/conversations/${conversationId}/messages${query}`);
+                    if (!res.ok) return;
+
+                    const json = await res.json();
+                    const missedMessages: ChatMessage[] = json.data || [];
+
+                    if (missedMessages.length > 0) {
+                        setMessages(prev => {
+                            const existingIds = new Set(prev.map(m => m.id));
+                            const uniqueNew = missedMessages.filter(m => !existingIds.has(m.id));
+                            return [...prev, ...uniqueNew];
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error fetching missed messages:", e);
+                }
+            };
+
+            fetchMissedMessages();
+        }
+    }, [isConnected]);
 
     const emitTyping = useCallback(() => {
         if (!conversationId || !isConnected || !socket) return;
@@ -307,7 +338,7 @@ export function useStaffChat(conversationId: string | null) {
         if (!conversationId || loadingMore || !hasMore || messages.length === 0) return;
         setLoadingMore(true);
         try {
-            const oldestClientTimestamp = messages[0].client_timestamp;
+            const oldestClientTimestamp = messages[0].client_timestamp || new Date(messages[0].sentAt).getTime();
             const res = await fetch(
                 `/api/chat/conversations/${conversationId}/messages?before=${oldestClientTimestamp}&limit=20`
             );

@@ -53,7 +53,7 @@ export function MessageBubble({
 
                 {/* Status Block (Time and Checkmarks for staff messages) */}
                 {showStatusBlock && (
-                    <div className="flex items-center gap-1 mt-1 px-1 justify-end">
+                    <div className="flex items-center gap-1 mt-1 px-1 justify-end min-h-[20px]">
                         {isPending ? (
 
                             <span className="text-[10px] italic text-slate-400 dark:text-slate-500">
