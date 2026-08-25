@@ -20,7 +20,7 @@ export function useStaffChat(conversationId: string | null) {
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Offline queue: stored in ref and synced to localStorage
-    const pendingQueueRef = useRef<{ id: string; body: string; client_timestamp: number }[]>([]);
+    const pendingQueueRef = useRef<{ id: string; body: string; client_timestamp: number; replyToMessageId?: string }[]>([]);
     const isFlushingRef = useRef(false);
     const [flushTrigger, setFlushTrigger] = useState(0);
 
