@@ -10,6 +10,8 @@ interface MessageBubbleProps {
     formatTime: (dateStr: string) => string;
     isTimeVisible: boolean;
     onToggleTime: () => void;
+    onToggleReaction: (emoji: string) => void;
+    onReplyClick?: () => void;
 }
 
 export function MessageBubble({
@@ -19,7 +21,9 @@ export function MessageBubble({
     showStatusBlock,
     formatTime,
     isTimeVisible,
-    onToggleTime
+    onToggleTime,
+    onToggleReaction,
+    onReplyClick
 }: MessageBubbleProps) {
     const isPending = message.isPending;
     return (
@@ -28,8 +32,25 @@ export function MessageBubble({
                 className="max-w-[80%] sm:max-w-[70%] relative group cursor-pointer sm:cursor-auto"
                 onClick={onToggleTime}
             >
-                <div className={`relative flex items-center w-fit max-w-full ${isOwnMessage ? 'ml-auto' : 'mr-auto'}`}>
-                    <div
+                <div className={`flex flex-col w-fit max-w-full ${isOwnMessage ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+                    {message.replyToMessage && (
+                        <div 
+                            className={`mb-1 max-w-[85%] text-xs bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 p-2 rounded-xl border border-slate-200/50 dark:border-slate-700/50 relative cursor-pointer hover:opacity-100 transition-opacity ${isOwnMessage ? 'opacity-80' : 'opacity-80'}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onReplyClick?.();
+                            }}
+                        >
+                            <p className="font-semibold mb-0.5 opacity-80">
+                                {message.replyToMessage.senderType === 'staff' ? 'Staff' : 'Patient'}
+                            </p>
+                            <p className="truncate opacity-90">{message.replyToMessage.body}</p>
+                            <div className={`absolute top-full w-2 h-2 bg-slate-100 dark:bg-slate-800/80 border-b border-r border-slate-200/50 dark:border-slate-700/50 transform rotate-45 ${isOwnMessage ? 'right-4 -mt-1' : 'left-4 -mt-1'}`}></div>
+                        </div>
+                    )}
+                
+                    <div className="relative flex items-center w-fit max-w-full">
+                        <div
                         className={`px-4.5 py-2.5 text-base leading-relaxed max-w-full transition-opacity ${isPending ? 'opacity-60' : 'opacity-100'} ${isOwnMessage
                             ? `bg-primary text-white shadow-xs ${bubbleShapeClass}`
                             : `bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs ${bubbleShapeClass}`
@@ -50,6 +71,33 @@ export function MessageBubble({
                         {formatTime(message.sentAt)}
                     </span>
                 </div>
+                </div>
+
+                {/* Render Reactions */}
+                {message.reactions && Object.keys(message.reactions).length > 0 && (
+                    <div className={`flex flex-wrap gap-1 mt-0.5 w-full ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                        {Object.entries(message.reactions).map(([emoji, { count, reactorIds }]) => {
+                            const hasReacted = reactorIds.length > 0;
+                            return (
+                                <button
+                                    key={emoji}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onToggleReaction(emoji);
+                                    }}
+                                    className={`flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-full border transition-colors shadow-xs
+                                        ${hasReacted 
+                                            ? 'bg-primary/10 border-primary/30 text-primary dark:text-primary-light' 
+                                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                        }`}
+                                >
+                                    <span className="text-[13px] leading-none">{emoji}</span>
+                                    <span className="leading-none">{count}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
 
                 {/* Status Block (Time and Checkmarks for staff messages) */}
                 {showStatusBlock && (

@@ -89,16 +89,24 @@ export function useStaffChat(conversationId: string | null) {
             if (data.userType === 'patient') setIsPatientTyping(false);
         };
 
+        const handleReactionUpdate = (data: { messageId: string; reactions: Record<string, { count: number; reactorIds: string[] }> }) => {
+            setMessages(prev => prev.map(m => 
+                m.id === data.messageId ? { ...m, reactions: data.reactions } : m
+            ));
+        };
+
         socket.on('message:receive', handleMessageReceive);
         socket.on('message:read', handleMessageRead);
         socket.on('typing:start', handleTypingStart);
         socket.on('typing:stop', handleTypingStop);
+        socket.on('reaction:update', handleReactionUpdate);
 
         return () => {
             socket.off('message:receive', handleMessageReceive);
             socket.off('message:read', handleMessageRead);
             socket.off('typing:start', handleTypingStart);
             socket.off('typing:stop', handleTypingStop);
+            socket.off('reaction:update', handleReactionUpdate);
         };
     }, [socket, conversationId]);
 
@@ -218,6 +226,7 @@ export function useStaffChat(conversationId: string | null) {
                             id: pending.id,
                             client_timestamp: pending.client_timestamp,
                             body: pending.body,
+                            replyToMessageId: pending.replyToMessageId,
                         }, (response: any) => {
                             clearTimeout(timer);
                             if (response?.id) resolve(response);
@@ -302,7 +311,7 @@ export function useStaffChat(conversationId: string | null) {
     }, [conversationId, isConnected, socket]);
 
     // 3. Send Message Logic: Only updates Optimistic UI and enqueues
-    const sendMessage = async (body: string) => {
+    const sendMessage = async (body: string, replyToMessage?: ChatMessage) => {
         if (!conversationId || !body.trim()) return;
 
         // Clear typing
@@ -321,13 +330,20 @@ export function useStaffChat(conversationId: string | null) {
             readAt: null,
             isPending: true,
             client_timestamp: clientTimestamp,
+            replyToMessageId: replyToMessage?.id,
+            replyToMessage: replyToMessage,
         };
 
         // Always show optimistic message immediately
         setMessages(prev => [...prev, optimisticMessage]);
 
         // Add to persistent queue
-        pendingQueueRef.current = [...pendingQueueRef.current, { id: realUuid, body: body.trim(), client_timestamp: clientTimestamp }];
+        pendingQueueRef.current = [...pendingQueueRef.current, { 
+            id: realUuid, 
+            body: body.trim(), 
+            client_timestamp: clientTimestamp,
+            replyToMessageId: replyToMessage?.id 
+        }];
         syncQueueToStorage(pendingQueueRef.current);
 
         // Trigger flush (if connected, the flushQueue effect will pick this up)
@@ -372,6 +388,15 @@ export function useStaffChat(conversationId: string | null) {
         }
     };
 
+    const toggleReaction = useCallback((messageId: string, emoji: string) => {
+        if (!socket || !isConnected || !conversationId) return;
+        socket.emit('reaction:toggle', {
+            messageId,
+            conversationId,
+            emoji
+        });
+    }, [socket, isConnected, conversationId]);
+
     return {
         messages,
         loading,
@@ -386,5 +411,6 @@ export function useStaffChat(conversationId: string | null) {
         sendMessage,
         loadMore,
         markAsRead,
+        toggleReaction,
     };
 }

@@ -1,14 +1,25 @@
 "use client";
 
-import { useState, useRef, useEffect, UIEvent, useMemo } from 'react';
-import { Conversation } from '@/types/chat';
+import { useState, useRef, useEffect, UIEvent, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import { Conversation, ChatMessage } from '@/types/chat';
 import { useStaffChat } from '@/hooks/useStaffChat';
 import { MessageBubble } from './MessageBubble';
 import { ZoneBadge } from '@/components/ui/ZoneBadge';
 import { PatientSlideOver } from '@/components/management/PatientSlideOver';
-import { Send, MessageSquare, AlertCircle, Info, ArrowLeft, ChevronDown } from 'lucide-react';
+import { Send, MessageSquare, AlertCircle, Info, ArrowLeft, ChevronDown, Smile, SmilePlus, CornerUpLeft, X } from 'lucide-react';
 import { formatDateDivider, formatBubbleTime } from '@/lib/utils';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import type { EmojiClickData } from 'emoji-picker-react';
+
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
+
+const DEFAULT_REACTIONS = [
+    { unified: '1f44d', emoji: '👍' },
+    { unified: '2764-fe0f', emoji: '❤️' },
+    { unified: '1f606', emoji: '😆' },
+    { unified: '1f62e', emoji: '😮' },
+];
 
 interface ConversationViewProps {
     conversation: Conversation | null;
@@ -29,16 +40,25 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
         isPatientTyping,
         emitTyping,
         sendMessage,
-        loadMore
+        loadMore,
+        toggleReaction
     } = useStaffChat(conversation ? conversation.id : null);
 
     const [inputText, setInputText] = useState('');
+    const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
     const [showSlideOverPatientId, setShowSlideOverPatientId] = useState<string | null>(null);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
+    const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
 
     const parentRef = useRef<HTMLDivElement>(null);
     const previousHeightRef = useRef<number>(0);
     const lastMessageIdRef = useRef<string | null>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const emojiPickerRef = useRef<HTMLDivElement>(null);
+    const emojiBtnRef = useRef<HTMLButtonElement>(null);
+    const reactionPickerRef = useRef<HTMLDivElement>(null);
+    const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const [activeTimeMsgId, setActiveTimeMsgId] = useState<string | null>(null);
     const [showScrollButton, setShowScrollButton] = useState(false);
@@ -52,6 +72,57 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
             window.dispatchEvent(new Event('chat_closed'));
         };
     }, [conversation?.id]);
+
+    // Close reaction picker when clicking outside
+    useEffect(() => {
+        if (!reactionPickerMsgId) return;
+        const handler = (e: MouseEvent) => {
+            if (reactionPickerRef.current && !reactionPickerRef.current.contains(e.target as Node)) {
+                setReactionPickerMsgId(null);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [reactionPickerMsgId]);
+
+    // Close emoji picker when clicking outside
+    useEffect(() => {
+        if (!showEmojiPicker) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (
+                emojiPickerRef.current &&
+                !emojiPickerRef.current.contains(e.target as Node) &&
+                emojiBtnRef.current &&
+                !emojiBtnRef.current.contains(e.target as Node)
+            ) {
+                setShowEmojiPicker(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showEmojiPicker]);
+
+    const handleEmojiClick = useCallback((emojiData: EmojiClickData) => {
+        const emoji = emojiData.emoji;
+        const textarea = inputRef.current;
+        if (!textarea) {
+            setInputText(prev => prev + emoji);
+            return;
+        }
+        const start = textarea.selectionStart ?? inputText.length;
+        const end = textarea.selectionEnd ?? inputText.length;
+        const newText = inputText.slice(0, start) + emoji + inputText.slice(end);
+        setInputText(newText);
+        // Restore cursor position after state update
+        requestAnimationFrame(() => {
+            textarea.focus();
+            const newPos = start + emoji.length;
+            textarea.setSelectionRange(newPos, newPos);
+            // Auto-resize
+            textarea.style.height = 'auto';
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        });
+    }, [inputText]);
 
     // Identify last read staff message
     const lastReadStaffMsgId = useMemo(() => {
@@ -114,6 +185,14 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
         overscan: 10,
     });
 
+    // Defer measureElement via queueMicrotask to prevent flushSync-inside-render error.
+    // react-virtual calls flushSync internally inside measureElement. If called directly
+    // as a ref (even in a useCallback), it still fires during React's commit phase and
+    // triggers the warning. queueMicrotask pushes it to AFTER the commit phase is done.
+    const measureRef = useCallback((el: Element | null) => {
+        if (el) queueMicrotask(() => virtualizer.measureElement(el));
+    }, [virtualizer]);
+
     const scrollToBottom = (smooth = false) => {
         if (flatItems.length > 0) {
             virtualizer.scrollToIndex(flatItems.length - 1, {
@@ -121,6 +200,14 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                 behavior: smooth ? 'smooth' : 'auto'
             });
             setShowScrollButton(false);
+        }
+    };
+
+    const scrollToMessage = (messageId: string) => {
+        const index = flatItems.findIndex(item => item.id === messageId);
+        if (index !== -1) {
+            virtualizer.scrollToIndex(index, { align: 'center', behavior: 'smooth' });
+            // add a highlight effect? Can do this by setting a state or just let the user see it centered
         }
     };
 
@@ -182,7 +269,8 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
         scrollToBottom();
 
         try {
-            await sendMessage(text);
+            await sendMessage(text, replyingTo || undefined);
+            setReplyingTo(null);
             scrollToBottom();
         } catch (err) {
             setInputText(text);
@@ -324,7 +412,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                                     <div
                                         key={item.id}
                                         data-index={virtualRow.index}
-                                        ref={virtualizer.measureElement}
+                                        ref={measureRef}
                                         style={{
                                             position: 'absolute',
                                             top: 0,
@@ -348,18 +436,122 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                                                     </span>
                                                 )}
 
-                                                <MessageBubble
-                                                    message={item.message}
-                                                    isOwnMessage={item.isOwnMessage}
-                                                    bubbleShapeClass={`rounded-2xl ${item.isOwnMessage
-                                                        ? (item.isFirstInGroup && item.isLastInGroup ? '' : item.isFirstInGroup ? 'rounded-br-xs' : item.isLastInGroup ? 'rounded-tr-xs' : 'rounded-tr-xs rounded-br-xs')
-                                                        : (item.isFirstInGroup && item.isLastInGroup ? '' : item.isFirstInGroup ? 'rounded-bl-xs' : item.isLastInGroup ? 'rounded-tl-xs' : 'rounded-tl-xs rounded-bl-xs')
-                                                        }`}
-                                                    showStatusBlock={item.showStatusBlock}
-                                                    formatTime={formatBubbleTime}
-                                                    isTimeVisible={activeTimeMsgId === item.id}
-                                                    onToggleTime={() => setActiveTimeMsgId(prev => prev === item.id ? null : item.id)}
-                                                />
+                                                {/* Hover wrapper: relative for absolute toolbar */}
+                                                <div
+                                                    className="relative w-full"
+                                                    onMouseEnter={() => {
+                                                        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                                                        setHoveredMsgId(item.id);
+                                                    }}
+                                                    onMouseLeave={() => {
+                                                        if (reactionPickerMsgId === item.id) return;
+                                                        hoverTimeoutRef.current = setTimeout(() => setHoveredMsgId(null), 120);
+                                                    }}
+                                                >
+                                                    {/* Reaction toolbar — absolute, above the bubble */}
+                                                    <div className={`absolute bottom-full mb-1 z-30 flex items-center gap-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-1.5 py-1 shadow-md transition-all duration-150
+                                                        ${item.isOwnMessage ? 'right-0' : 'left-0'}
+                                                        ${(hoveredMsgId === item.id || reactionPickerMsgId === item.id)
+                                                            ? 'opacity-100 scale-100 pointer-events-auto'
+                                                            : 'opacity-0 scale-90 pointer-events-none'}`}
+                                                    >
+                                                        {DEFAULT_REACTIONS.map(({ unified, emoji }) => (
+                                                            <button
+                                                                key={unified}
+                                                                type="button"
+                                                                title={emoji}
+                                                                onClick={() => toggleReaction(item.id, emoji)}
+                                                                className="text-lg leading-none w-7 h-7 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-125 transition-all duration-100 cursor-pointer"
+                                                            >
+                                                                {emoji}
+                                                            </button>
+                                                        ))}
+
+                                                        <span className="w-px h-4 bg-slate-200 dark:bg-slate-600 mx-0.5 shrink-0" />
+
+                                                        <div className="relative" ref={reactionPickerMsgId === item.id ? reactionPickerRef : null}>
+                                                            <button
+                                                                type="button"
+                                                                title="More reactions"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setReactionPickerMsgId(prev => prev === item.id ? null : item.id);
+                                                                    setHoveredMsgId(item.id);
+                                                                }}
+                                                                className={`w-7 h-7 flex items-center justify-center rounded-full transition-all cursor-pointer
+                                                                    ${reactionPickerMsgId === item.id
+                                                                        ? 'bg-primary/10 text-primary'
+                                                                        : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary'}`}
+                                                            >
+                                                                <SmilePlus className="w-4 h-4" />
+                                                            </button>
+
+                                                            {reactionPickerMsgId === item.id && (
+                                                                <div className={`absolute bottom-full mb-2 z-50 drop-shadow-2xl ${item.isOwnMessage ? 'right-0' : 'left-0'}`}>
+                                                                    <EmojiPicker
+                                                                        onEmojiClick={(emojiData) => {
+                                                                            toggleReaction(item.id, emojiData.emoji);
+                                                                            setReactionPickerMsgId(null);
+                                                                            setHoveredMsgId(null);
+                                                                        }}
+                                                                        theme={"auto" as any}
+                                                                        emojiStyle={"native" as any}
+                                                                        autoFocusSearch={false}
+                                                                        height={360}
+                                                                        width={300}
+                                                                        searchPlaceholder="Find emoji..."
+                                                                        lazyLoadEmojis
+                                                                        previewConfig={{ showPreview: false }}
+                                                                        style={{
+                                                                            '--epr-bg-color': 'var(--color-background, #fff)',
+                                                                            '--epr-category-label-bg-color': 'var(--color-background, #fff)',
+                                                                            '--epr-text-color': 'var(--color-foreground, #0f172a)',
+                                                                            '--epr-search-border-color': 'var(--color-border, #e2e8f0)',
+                                                                            '--epr-border-color': 'var(--color-border, #e2e8f0)',
+                                                                            borderRadius: '16px',
+                                                                            border: '1px solid',
+                                                                            borderColor: 'var(--color-border, #e2e8f0)',
+                                                                        } as React.CSSProperties}
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        <span className="w-px h-4 bg-slate-200 dark:bg-slate-600 mx-0.5 shrink-0" />
+
+                                                        <button
+                                                            type="button"
+                                                            title="Reply"
+                                                            onClick={() => {
+                                                                setReplyingTo(item.message);
+                                                                inputRef.current?.focus();
+                                                            }}
+                                                            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary transition-all cursor-pointer"
+                                                        >
+                                                            <CornerUpLeft className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Message bubble */}
+                                                    <MessageBubble
+                                                        message={item.message}
+                                                        isOwnMessage={item.isOwnMessage}
+                                                        bubbleShapeClass={`rounded-2xl ${item.isOwnMessage
+                                                            ? (item.isFirstInGroup && item.isLastInGroup ? '' : item.isFirstInGroup ? 'rounded-br-xs' : item.isLastInGroup ? 'rounded-tr-xs' : 'rounded-tr-xs rounded-br-xs')
+                                                            : (item.isFirstInGroup && item.isLastInGroup ? '' : item.isFirstInGroup ? 'rounded-bl-xs' : item.isLastInGroup ? 'rounded-tl-xs' : 'rounded-tl-xs rounded-bl-xs')
+                                                            }`}
+                                                        showStatusBlock={item.showStatusBlock}
+                                                        formatTime={formatBubbleTime}
+                                                        isTimeVisible={activeTimeMsgId === item.id}
+                                                        onToggleTime={() => setActiveTimeMsgId(prev => prev === item.id ? null : item.id)}
+                                                        onToggleReaction={(emoji) => toggleReaction(item.id, emoji)}
+                                                        onReplyClick={() => {
+                                                            if (item.message.replyToMessageId) {
+                                                                scrollToMessage(item.message.replyToMessageId);
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -401,7 +593,73 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
 
             {/* Input Form */}
             <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-20 relative">
-                <div className="flex items-end gap-3 max-w-4xl mx-auto">
+                
+                {replyingTo && (
+                    <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl px-4 py-2.5 mb-3 border border-slate-200 dark:border-slate-700 mx-auto max-w-4xl relative shadow-sm">
+                        <div className="w-1 absolute left-0 top-2 bottom-2 bg-primary rounded-r-md"></div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-primary mb-0.5">
+                                Replying to {replyingTo.senderType === 'staff' ? 'You' : patientName}
+                            </p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                                {replyingTo.body}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setReplyingTo(null)}
+                            className="p-1 rounded-full text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
+                
+                {/* Emoji Picker Popover */}
+                {showEmojiPicker && (
+                    <div
+                        ref={emojiPickerRef}
+                        className="absolute bottom-full left-4 mb-2 z-50 drop-shadow-2xl"
+                    >
+                        <EmojiPicker
+                            onEmojiClick={handleEmojiClick}
+                            theme={"auto" as any}
+                            emojiStyle={"native" as any}
+                            height={380}
+                            width={320}
+                            searchPlaceholder="Find emoji..."
+                            lazyLoadEmojis
+                            previewConfig={{ showPreview: false }}
+                            style={{
+                                '--epr-bg-color': 'var(--color-background, #fff)',
+                                '--epr-category-label-bg-color': 'var(--color-background, #fff)',
+                                '--epr-text-color': 'var(--color-foreground, #0f172a)',
+                                '--epr-search-border-color': 'var(--color-border, #e2e8f0)',
+                                '--epr-border-color': 'var(--color-border, #e2e8f0)',
+                                borderRadius: '16px',
+                                border: '1px solid',
+                                borderColor: 'var(--color-border, #e2e8f0)',
+                            } as React.CSSProperties}
+                        />
+                    </div>
+                )}
+
+                <div className="flex items-end gap-2 max-w-4xl mx-auto">
+                    {/* Emoji Button */}
+                    <button
+                        ref={emojiBtnRef}
+                        type="button"
+                        aria-label="Open emoji picker"
+                        onClick={() => setShowEmojiPicker(prev => !prev)}
+                        className={`flex h-11 w-11 items-center justify-center rounded-xl border transition-all shrink-0 cursor-pointer
+                            ${showEmojiPicker
+                                ? 'bg-primary/10 border-primary/30 text-primary'
+                                : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700/80 text-slate-400 hover:text-primary dark:hover:text-primary'
+                            }`}
+                    >
+                        <Smile className="w-5 h-5" />
+                    </button>
+
                     <textarea
                         ref={inputRef}
                         value={inputText}

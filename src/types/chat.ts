@@ -32,6 +32,9 @@ export interface ChatMessage {
     readAt: string | null;
     isPending?: boolean;
     client_timestamp?: number;
+    reactions?: Record<string, { count: number; reactorIds: string[] }>;
+    replyToMessageId?: string;
+    replyToMessage?: ChatMessage;
 }
 
 export interface Conversation {
