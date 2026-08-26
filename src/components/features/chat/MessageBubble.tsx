@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChatMessage } from '@/types/chat';
 import { Check, CheckCheck } from 'lucide-react';
+import { ImageLightbox } from './ImageLightbox';
 
 interface MessageBubbleProps {
     message: ChatMessage;
@@ -26,6 +27,8 @@ export function MessageBubble({
     onReplyClick
 }: MessageBubbleProps) {
     const isPending = message.isPending;
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+
     return (
         <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'} w-full`}>
             <div
@@ -44,33 +47,51 @@ export function MessageBubble({
                             <p className="font-semibold mb-0.5 opacity-80">
                                 {message.replyToMessage.senderType === 'staff' ? 'Staff' : 'Patient'}
                             </p>
-                            <p className="truncate opacity-90">{message.replyToMessage.body}</p>
+                            {message.replyToMessage.imageUrl ? (
+                                <p className="opacity-70 italic">📷 Image</p>
+                            ) : (
+                                <p className="truncate opacity-90">{message.replyToMessage.body}</p>
+                            )}
                             <div className={`absolute top-full w-2 h-2 bg-slate-100 dark:bg-slate-800/80 border-b border-r border-slate-200/50 dark:border-slate-700/50 transform rotate-45 ${isOwnMessage ? 'right-4 -mt-1' : 'left-4 -mt-1'}`}></div>
                         </div>
                     )}
                 
                     <div className="relative flex items-center w-fit max-w-full">
                         <div
-                        className={`px-4.5 py-2.5 text-base leading-relaxed max-w-full transition-opacity ${isPending ? 'opacity-60' : 'opacity-100'} ${isOwnMessage
-                            ? `bg-primary text-white shadow-xs ${bubbleShapeClass}`
-                            : `bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs ${bubbleShapeClass}`
-                            }`}
-                    >
-                        <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-left">
-                            {message.body}
-                        </p>
-                    </div>
+                            className={`transition-opacity overflow-hidden ${isPending ? 'opacity-60' : 'opacity-100'} ${isOwnMessage
+                                ? `bg-primary text-white shadow-xs ${bubbleShapeClass}`
+                                : `bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs ${bubbleShapeClass}`
+                                } ${message.imageUrl && !message.body ? 'p-1' : 'px-4.5 py-2.5'}`}
+                        >
+                            {message.imageUrl && (
+                                <img
+                                    src={message.imageUrl}
+                                    alt="Shared image"
+                                    className="max-w-[280px] max-h-[320px] w-auto h-auto object-cover rounded-lg cursor-zoom-in block"
+                                    style={{ display: 'block' }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setLightboxOpen(true);
+                                    }}
+                                />
+                            )}
+                            {message.body && (
+                                <p className={`whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-left text-base leading-relaxed ${message.imageUrl ? 'mt-1.5 px-2 pb-1' : ''}`}>
+                                    {message.body}
+                                </p>
+                            )}
+                        </div>
 
-                    {/* Time Indicator */}
-                    <span
-                        className={`absolute ${isOwnMessage ? 'right-full mr-3' : 'left-full ml-3'} 
-                            transition-opacity duration-200 text-xs font-medium text-slate-400 dark:text-slate-500 whitespace-nowrap select-none top-1/2 -translate-y-1/2
-                            ${isTimeVisible ? 'opacity-100' : 'opacity-0 sm:group-hover:opacity-100'} 
-                        `}
-                    >
-                        {formatTime(message.sentAt)}
-                    </span>
-                </div>
+                        {/* Time Indicator */}
+                        <span
+                            className={`absolute ${isOwnMessage ? 'right-full mr-3' : 'left-full ml-3'} 
+                                transition-opacity duration-200 text-xs font-medium text-slate-400 dark:text-slate-500 whitespace-nowrap select-none top-1/2 -translate-y-1/2
+                                ${isTimeVisible ? 'opacity-100' : 'opacity-0 sm:group-hover:opacity-100'} 
+                            `}
+                        >
+                            {formatTime(message.sentAt)}
+                        </span>
+                    </div>
                 </div>
 
                 {/* Render Reactions */}
@@ -131,6 +152,10 @@ export function MessageBubble({
                     </div>
                 )}
             </div>
+
+            {lightboxOpen && message.imageUrl && (
+                <ImageLightbox src={message.imageUrl} onClose={() => setLightboxOpen(false)} />
+            )}
         </div>
     );
 }

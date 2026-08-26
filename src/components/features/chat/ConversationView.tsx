@@ -7,7 +7,7 @@ import { useStaffChat } from '@/hooks/useStaffChat';
 import { MessageBubble } from './MessageBubble';
 import { ZoneBadge } from '@/components/ui/ZoneBadge';
 import { PatientSlideOver } from '@/components/management/PatientSlideOver';
-import { Send, MessageSquare, AlertCircle, Info, ArrowLeft, ChevronDown, Smile, SmilePlus, CornerUpLeft, X } from 'lucide-react';
+import { Send, MessageSquare, AlertCircle, Info, ArrowLeft, ChevronDown, Smile, SmilePlus, CornerUpLeft, X, ImagePlus } from 'lucide-react';
 import { formatDateDivider, formatBubbleTime } from '@/lib/utils';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { EmojiClickData } from 'emoji-picker-react';
@@ -46,6 +46,9 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
 
     const [inputText, setInputText] = useState('');
     const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+    const [imageToSend, setImageToSend] = useState<string | null>(null);  // Cloudinary URL after upload
+    const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null); // local preview
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [showSlideOverPatientId, setShowSlideOverPatientId] = useState<string | null>(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
@@ -59,6 +62,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
     const emojiBtnRef = useRef<HTMLButtonElement>(null);
     const reactionPickerRef = useRef<HTMLDivElement>(null);
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [activeTimeMsgId, setActiveTimeMsgId] = useState<string | null>(null);
     const [showScrollButton, setShowScrollButton] = useState(false);
@@ -247,6 +251,50 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
         }
     };
 
+    const uploadImageFile = async (file: File) => {
+        setIsUploadingImage(true);
+        setImagePreviewUrl(URL.createObjectURL(file));
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch('/api/chat/upload-image', { method: 'POST', body: fd });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error?.message || 'Upload failed');
+            setImageToSend(json.data?.url || json.url);
+        } catch (err: any) {
+            setImagePreviewUrl(null);
+            setImageToSend(null);
+            alert(err.message || 'Image upload failed');
+        } finally {
+            setIsUploadingImage(false);
+        }
+    };
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) uploadImageFile(file);
+        e.target.value = '';
+    };
+
+    const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (const item of Array.from(items)) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault();
+                const file = item.getAsFile();
+                if (file) uploadImageFile(file);
+                return;
+            }
+        }
+    };
+
+    const clearImage = () => {
+        setImageToSend(null);
+        if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+        setImagePreviewUrl(null);
+    };
+
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setInputText(e.target.value);
         emitTyping();
@@ -259,7 +307,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
         if (e && e.preventDefault) e.preventDefault();
 
         const text = inputText.trim();
-        if (!text || sending) return;
+        if ((!text && !imageToSend) || sending || isUploadingImage) return;
 
         setInputText('');
         if (inputRef.current) {
@@ -268,8 +316,11 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
         inputRef.current?.focus();
         scrollToBottom();
 
+        const imgUrl = imageToSend;
+        clearImage();
+
         try {
-            await sendMessage(text, replyingTo || undefined);
+            await sendMessage(text, replyingTo || undefined, imgUrl || undefined);
             setReplyingTo(null);
             scrollToBottom();
         } catch (err) {
@@ -615,6 +666,34 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                     </div>
                 )}
                 
+                {/* Image preview strip */}
+                {imagePreviewUrl && (
+                    <div className="flex items-center gap-3 mb-3 mx-auto max-w-4xl">
+                        <div className="relative inline-block">
+                            <img
+                                src={imagePreviewUrl}
+                                alt="Image to send"
+                                className="h-20 w-20 object-cover rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm"
+                            />
+                            {isUploadingImage && (
+                                <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center">
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                </div>
+                            )}
+                            <button
+                                type="button"
+                                onClick={clearImage}
+                                disabled={isUploadingImage}
+                                className="absolute -top-2 -right-2 w-5 h-5 bg-slate-700 text-white rounded-full flex items-center justify-center hover:bg-red-500 transition-colors cursor-pointer"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
+                        {!isUploadingImage && <span className="text-xs text-green-600 dark:text-green-400 font-medium">Ready to send</span>}
+                        {isUploadingImage && <span className="text-xs text-slate-500 dark:text-slate-400">Uploading...</span>}
+                    </div>
+                )}
+
                 {/* Emoji Picker Popover */}
                 {showEmojiPicker && (
                     <div
@@ -645,6 +724,15 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                 )}
 
                 <div className="flex items-end gap-2 max-w-4xl mx-auto">
+                    {/* Hidden file input */}
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleFileSelect}
+                    />
+
                     {/* Emoji Button */}
                     <button
                         ref={emojiBtnRef}
@@ -660,12 +748,22 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                         <Smile className="w-5 h-5" />
                     </button>
 
+                    {/* Image Button */}
+                    <button
+                        type="button"
+                        aria-label="Send image"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingImage}
+                        className="flex h-11 w-11 items-center justify-center rounded-xl border transition-all shrink-0 cursor-pointer bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700/80 text-slate-400 hover:text-primary dark:hover:text-primary disabled:opacity-40"
+                    >
+                        <ImagePlus className="w-5 h-5" />
+                    </button>
+
                     <textarea
                         ref={inputRef}
                         value={inputText}
                         onChange={handleTextChange}
-                        // disabled={isReconnecting}
-                        // placeholder={isReconnecting ? "Reconnecting..." : "Type a message..."}
+                        onPaste={handlePaste}
                         placeholder={"Type a message..."}
                         onKeyDown={handleKeyDown}
                         rows={1}
@@ -674,8 +772,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                     <button
                         aria-label="Send message"
                         type="submit"
-                        // disabled={!inputText.trim() || sending || isReconnecting}
-                        disabled={!inputText.trim() || sending}
+                        disabled={(!inputText.trim() && !imageToSend) || sending || isUploadingImage}
                         className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary hover:bg-primary-hover active:scale-[0.97] transition-all text-white disabled:opacity-30 disabled:pointer-events-none shadow-md shrink-0 shadow-primary/10 cursor-pointer"
                     >
                         <Send className="w-4.5 h-4.5" />

@@ -146,7 +146,7 @@ export function ConversationList({
                                             : 'text-slate-500 dark:text-slate-400'
                                             }`}>
                                             {conv.lastMessage?.senderType === 'staff' ? 'You: ' : ''}
-                                            {conv.lastMessage?.body || 'Start the conversation'}
+                                            {conv.lastMessage?.body ? conv.lastMessage.body : (conv.lastMessage?.imageUrl ? '📷 Sent a picture' : 'Start the conversation')}
                                         </p>
                                         <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium whitespace-nowrap shrink-0 flex items-center ml-0.5">
                                             <Dot className="inline" />

@@ -35,6 +35,7 @@ export interface ChatMessage {
     reactions?: Record<string, { count: number; reactorIds: string[] }>;
     replyToMessageId?: string;
     replyToMessage?: ChatMessage;
+    imageUrl?: string;
 }
 
 export interface Conversation {

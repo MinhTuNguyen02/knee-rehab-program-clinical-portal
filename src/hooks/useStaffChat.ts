@@ -20,7 +20,7 @@ export function useStaffChat(conversationId: string | null) {
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Offline queue: stored in ref and synced to localStorage
-    const pendingQueueRef = useRef<{ id: string; body: string; client_timestamp: number; replyToMessageId?: string }[]>([]);
+    const pendingQueueRef = useRef<{ id: string; body: string; client_timestamp: number; replyToMessageId?: string; imageUrl?: string }[]>([]);
     const isFlushingRef = useRef(false);
     const [flushTrigger, setFlushTrigger] = useState(0);
 
@@ -227,6 +227,7 @@ export function useStaffChat(conversationId: string | null) {
                             client_timestamp: pending.client_timestamp,
                             body: pending.body,
                             replyToMessageId: pending.replyToMessageId,
+                            imageUrl: pending.imageUrl,
                         }, (response: any) => {
                             clearTimeout(timer);
                             if (response?.id) resolve(response);
@@ -311,8 +312,8 @@ export function useStaffChat(conversationId: string | null) {
     }, [conversationId, isConnected, socket]);
 
     // 3. Send Message Logic: Only updates Optimistic UI and enqueues
-    const sendMessage = async (body: string, replyToMessage?: ChatMessage) => {
-        if (!conversationId || !body.trim()) return;
+    const sendMessage = async (body: string, replyToMessage?: ChatMessage, imageUrl?: string) => {
+        if (!conversationId || (!body.trim() && !imageUrl)) return;
 
         // Clear typing
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -332,6 +333,7 @@ export function useStaffChat(conversationId: string | null) {
             client_timestamp: clientTimestamp,
             replyToMessageId: replyToMessage?.id,
             replyToMessage: replyToMessage,
+            imageUrl,
         };
 
         // Always show optimistic message immediately
@@ -342,7 +344,8 @@ export function useStaffChat(conversationId: string | null) {
             id: realUuid, 
             body: body.trim(), 
             client_timestamp: clientTimestamp,
-            replyToMessageId: replyToMessage?.id 
+            replyToMessageId: replyToMessage?.id,
+            imageUrl 
         }];
         syncQueueToStorage(pendingQueueRef.current);
 
