@@ -46,4 +46,6 @@ export interface Conversation {
     patient: ChatPatient;
     lastMessage: ChatMessage | null;
     unreadCount: number;
+    streakCount: number;
+    streakActiveToday: boolean;
 }

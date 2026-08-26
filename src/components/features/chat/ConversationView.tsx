@@ -7,7 +7,7 @@ import { useStaffChat } from '@/hooks/useStaffChat';
 import { MessageBubble } from './MessageBubble';
 import { ZoneBadge } from '@/components/ui/ZoneBadge';
 import { PatientSlideOver } from '@/components/management/PatientSlideOver';
-import { Send, MessageSquare, AlertCircle, Info, ArrowLeft, ChevronDown, Smile, SmilePlus, CornerUpLeft, X, ImagePlus } from 'lucide-react';
+import { Send, MessageSquare, AlertCircle, Info, ArrowLeft, ChevronDown, Smile, SmilePlus, CornerUpLeft, X, ImagePlus, Flame } from 'lucide-react';
 import { formatDateDivider, formatBubbleTime } from '@/lib/utils';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { EmojiClickData } from 'emoji-picker-react';
@@ -392,13 +392,27 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                     </div>
                 </div>
 
-                <button
-                    onClick={() => setShowSlideOverPatientId(conversation.patientId)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
-                >
-                    <Info className="h-4 w-4 text-slate-450" />
-                    <span className="hidden sm:block">Patient Details</span>
-                </button>
+                <div className="flex items-center gap-2">
+                    {/* Streak Indicator */}
+                    {conversation && (conversation.streakCount >= 2 || (conversation.streakCount === 1 && conversation.streakActiveToday)) && (
+                        <div className={`flex items-center gap-1.5 font-bold text-sm px-3 py-1.5 rounded-lg border transition-colors shadow-sm ${
+                            conversation.streakActiveToday 
+                                ? 'bg-orange-50 text-orange-500 border-orange-100 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/20' 
+                                : 'bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-800/50 dark:text-slate-500 dark:border-slate-700'
+                        }`}>
+                            <Flame className={`w-4 h-4 ${conversation.streakActiveToday ? 'fill-orange-500 dark:fill-orange-400 text-orange-500 dark:text-orange-400' : 'fill-slate-400 dark:fill-slate-500 text-slate-400 dark:text-slate-500'}`} />
+                            {conversation.streakCount}
+                        </div>
+                    )}
+
+                    <button
+                        onClick={() => setShowSlideOverPatientId(conversation.patientId)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+                    >
+                        <Info className="h-4 w-4 text-slate-450" />
+                        <span className="hidden sm:block">Patient Details</span>
+                    </button>
+                </div>
             </div>
 
             {/* Chat Body (Virtual Scroll Area) */}
