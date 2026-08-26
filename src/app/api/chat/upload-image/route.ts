@@ -6,7 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 export async function POST(request: Request) {
     try {
         const cookieStore = await cookies();
-        const token = cookieStore.get('jwt')?.value;
+        const token = cookieStore.get('auth_token')?.value;
 
         const formData = await request.formData();
 
@@ -19,6 +19,7 @@ export async function POST(request: Request) {
         });
 
         const json = await res.json();
+        console.log('Upload image response from backend:', json, 'status:', res.status);
 
         if (!res.ok) {
             return NextResponse.json({ error: json }, { status: res.status });
