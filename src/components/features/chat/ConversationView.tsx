@@ -617,6 +617,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                                                                 scrollToMessage(item.message.replyToMessageId);
                                                             }
                                                         }}
+                                                        patientId={conversation?.patientId || ''}
                                                     />
                                                 </div>
                                             </div>

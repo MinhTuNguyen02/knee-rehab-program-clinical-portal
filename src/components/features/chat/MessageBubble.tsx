@@ -13,6 +13,7 @@ interface MessageBubbleProps {
     onToggleTime: () => void;
     onToggleReaction: (emoji: string) => void;
     onReplyClick?: () => void;
+    patientId: string;
 }
 
 export function MessageBubble({
@@ -24,7 +25,8 @@ export function MessageBubble({
     isTimeVisible,
     onToggleTime,
     onToggleReaction,
-    onReplyClick
+    onReplyClick,
+    patientId
 }: MessageBubbleProps) {
     const isPending = message.isPending;
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -95,30 +97,51 @@ export function MessageBubble({
                 </div>
 
                 {/* Render Reactions */}
-                {message.reactions && Object.keys(message.reactions).length > 0 && (
-                    <div className={`flex flex-wrap gap-1 mt-0.5 w-full ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                        {Object.entries(message.reactions).map(([emoji, { count, reactorIds }]) => {
-                            const hasReacted = reactorIds.length > 0;
-                            return (
+                {message.reactions && Object.keys(message.reactions).length > 0 && (() => {
+                    const reactionEntries = Object.entries(message.reactions!);
+                    const totalReactions = reactionEntries.reduce((sum, [_, data]) => sum + data.count, 0);
+
+                    const getTooltip = (reactorIds: string[]) => {
+                        return reactorIds.map(id => id === patientId ? 'Patient' : 'You').join(', ');
+                    };
+
+                    return (
+                        <div className={`flex flex-wrap gap-1 -mt-2.5 relative z-10 w-full ${isOwnMessage ? 'justify-end pr-2' : 'justify-start pl-2'}`}>
+                            {totalReactions === 2 && reactionEntries.length === 2 ? (
                                 <button
-                                    key={emoji}
+                                    title={reactionEntries.map(([emoji, data]) => `${emoji}: ${getTooltip(data.reactorIds)}`).join(' | ')}
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        onToggleReaction(emoji);
+                                        // Find which emoji the staff reacted to
+                                        const myReaction = reactionEntries.find(([_, data]) => data.reactorIds.some(id => id !== patientId));
+                                        if (myReaction) onToggleReaction(myReaction[0]);
                                     }}
-                                    className={`flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-full border transition-colors shadow-xs
-                                        ${hasReacted 
-                                            ? 'bg-primary/10 border-primary/30 text-primary dark:text-primary-light' 
-                                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-                                        }`}
+                                    className="flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full border transition-colors shadow-xs bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
                                 >
-                                    <span className="text-[13px] leading-none">{emoji}</span>
-                                    <span className="leading-none">{count}</span>
+                                    <span className="text-[13px] leading-none">{reactionEntries[0][0]}</span>
+                                    <span className="text-[13px] leading-none">{reactionEntries[1][0]}</span>
                                 </button>
-                            );
-                        })}
-                    </div>
-                )}
+                            ) : (
+                                reactionEntries.map(([emoji, { count, reactorIds }]) => {
+                                    return (
+                                        <button
+                                            key={emoji}
+                                            title={getTooltip(reactorIds)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onToggleReaction(emoji);
+                                            }}
+                                            className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-full border transition-colors shadow-xs bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                                        >
+                                            <span className="text-[13px] leading-none">{emoji}</span>
+                                            {count > 1 && <span className="leading-none">{count}</span>}
+                                        </button>
+                                    );
+                                })
+                            )}
+                        </div>
+                    );
+                })()}
 
                 {/* Status Block (Time and Checkmarks for staff messages) */}
                 {showStatusBlock && (
