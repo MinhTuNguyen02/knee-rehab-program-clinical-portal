@@ -190,11 +190,13 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
     });
 
     // Defer measureElement via queueMicrotask to prevent flushSync-inside-render error.
-    // react-virtual calls flushSync internally inside measureElement. If called directly
-    // as a ref (even in a useCallback), it still fires during React's commit phase and
-    // triggers the warning. queueMicrotask pushes it to AFTER the commit phase is done.
     const measureRef = useCallback((el: Element | null) => {
-        if (el) queueMicrotask(() => virtualizer.measureElement(el));
+        if (!el) return;
+        queueMicrotask(() => {
+            if (el.isConnected) {
+                virtualizer.measureElement(el);
+            }
+        });
     }, [virtualizer]);
 
     const scrollToBottom = (smooth = false) => {
@@ -475,7 +477,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
 
                                 return (
                                     <div
-                                        key={item.id}
+                                        key={virtualRow.key}
                                         data-index={virtualRow.index}
                                         ref={measureRef}
                                         style={{

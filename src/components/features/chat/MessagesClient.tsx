@@ -124,14 +124,24 @@ function MessagesClientInner() {
             setOnlinePatients(new Set(onlineIds));
         };
 
+        const handleStreakUpdate = (data: { conversationId: string; streakCount: number; streakActiveToday: boolean }) => {
+            setConversations(prev => prev.map(c =>
+                c.id === data.conversationId
+                    ? { ...c, streakCount: data.streakCount, streakActiveToday: data.streakActiveToday }
+                    : c
+            ));
+        };
+
         socket.on('conversation:update', handleConversationUpdate);
         socket.on('patient:global_status', handleGlobalStatus);
         socket.on('patient:global_initial', handleGlobalInitial);
+        socket.on('streak:update', handleStreakUpdate);
 
         return () => {
             socket.off('conversation:update', handleConversationUpdate);
             socket.off('patient:global_status', handleGlobalStatus);
             socket.off('patient:global_initial', handleGlobalInitial);
+            socket.off('streak:update', handleStreakUpdate);
         };
     }, [socket, isConnected, selectedConversationId]);
 
