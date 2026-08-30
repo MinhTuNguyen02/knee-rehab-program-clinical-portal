@@ -396,12 +396,11 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
 
                 <div className="flex items-center gap-2">
                     {/* Streak Indicator */}
-                    {conversation && (conversation.streakCount >= 2 || (conversation.streakCount === 1 && conversation.streakActiveToday)) && (
-                        <div className={`flex items-center gap-1.5 font-bold text-sm px-3 py-1.5 rounded-lg border transition-colors shadow-sm ${
-                            conversation.streakActiveToday 
-                                ? 'bg-orange-50 text-orange-500 border-orange-100 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/20' 
+                    {conversation && conversation.streakCount >= 3 && (
+                        <div className={`flex items-center gap-1.5 font-bold text-sm px-3 py-1.5 rounded-lg border transition-colors shadow-sm ${conversation.streakActiveToday
+                                ? 'bg-orange-50 text-orange-500 border-orange-100 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/20'
                                 : 'bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-800/50 dark:text-slate-500 dark:border-slate-700'
-                        }`}>
+                            }`}>
                             <Flame className={`w-4 h-4 ${conversation.streakActiveToday ? 'fill-orange-500 dark:fill-orange-400 text-orange-500 dark:text-orange-400' : 'fill-slate-400 dark:fill-slate-500 text-slate-400 dark:text-slate-500'}`} />
                             {conversation.streakCount}
                         </div>
@@ -661,7 +660,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
 
             {/* Input Form */}
             <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-20 relative">
-                
+
                 {replyingTo && (
                     <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl px-4 py-2.5 mb-3 border border-slate-200 dark:border-slate-700 mx-auto max-w-4xl relative shadow-sm">
                         <div className="w-1 absolute left-0 top-2 bottom-2 bg-primary rounded-r-md"></div>
@@ -682,7 +681,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                         </button>
                     </div>
                 )}
-                
+
                 {/* Image preview strip */}
                 {imagePreviewUrl && (
                     <div className="flex items-center gap-3 mb-3 mx-auto max-w-4xl">

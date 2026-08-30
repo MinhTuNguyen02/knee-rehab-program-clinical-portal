@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChatMessage } from '@/types/chat';
 import { Check, CheckCheck } from 'lucide-react';
 import { ImageLightbox } from './ImageLightbox';
+import Linkify from 'linkify-react';
 
 interface MessageBubbleProps {
     message: ChatMessage;
@@ -31,6 +32,13 @@ export function MessageBubble({
     const isPending = message.isPending;
     const [lightboxOpen, setLightboxOpen] = useState(false);
 
+    const linkifyOptions = {
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        className: `underline hover:opacity-80 transition-opacity ${!isOwnMessage ? 'text-primary dark:text-blue-400' : ''}`,
+        onClick: (e: any) => e.stopPropagation()
+    };
+
     return (
         <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'} w-full`}>
             <div
@@ -39,7 +47,7 @@ export function MessageBubble({
             >
                 <div className={`flex flex-col w-fit max-w-full ${isOwnMessage ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
                     {message.replyToMessage && (
-                        <div 
+                        <div
                             className={`mb-1 max-w-[85%] text-xs bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 p-2 rounded-xl border border-slate-200/50 dark:border-slate-700/50 relative cursor-pointer hover:opacity-100 transition-opacity ${isOwnMessage ? 'opacity-80' : 'opacity-80'}`}
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -57,7 +65,7 @@ export function MessageBubble({
                             <div className={`absolute top-full w-2 h-2 bg-slate-100 dark:bg-slate-800/80 border-b border-r border-slate-200/50 dark:border-slate-700/50 transform rotate-45 ${isOwnMessage ? 'right-4 -mt-1' : 'left-4 -mt-1'}`}></div>
                         </div>
                     )}
-                
+
                     <div className="relative flex items-center w-fit max-w-full">
                         <div
                             className={`transition-opacity overflow-hidden ${isPending ? 'opacity-60' : 'opacity-100'} ${isOwnMessage
@@ -79,7 +87,7 @@ export function MessageBubble({
                             )}
                             {message.body && (
                                 <p className={`whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-left text-base leading-relaxed ${message.imageUrl ? 'mt-1.5 px-2 pb-1' : ''}`}>
-                                    {message.body}
+                                    <Linkify options={linkifyOptions}>{message.body}</Linkify>
                                 </p>
                             )}
                         </div>
