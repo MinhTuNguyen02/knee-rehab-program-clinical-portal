@@ -202,6 +202,7 @@ export function useStaffNotifications() {
                 });
 
                 if (fcmToken) {
+                    localStorage.setItem('fcmToken', fcmToken);
                     await fetch('/api/staff/fcm-token', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },

@@ -80,6 +80,15 @@ export default function UserMenu() {
     const handleLogout = () => {
         startTransition(async () => {
             try {
+                const fcmToken = localStorage.getItem('fcmToken');
+                if (fcmToken) {
+                    await fetch('/api/staff/fcm-token', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fcmToken })
+                    });
+                    localStorage.removeItem('fcmToken');
+                }
                 await fetch('/api/auth/logout', { method: 'POST' });
             } catch (err) {
                 // ignore
