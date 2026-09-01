@@ -690,7 +690,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                                 Replying to {replyingTo.senderType === 'staff' ? 'You' : patientName}
                             </p>
                             <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
-                                {replyingTo.body}
+                                {replyingTo.stickerUrl ? '🎨 Sticker' : replyingTo.imageUrl ? '📷 Photo' : replyingTo.body}
                             </p>
                         </div>
                         <button

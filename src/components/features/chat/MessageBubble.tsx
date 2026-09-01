@@ -57,7 +57,9 @@ export function MessageBubble({
                             <p className="font-semibold mb-0.5 opacity-80">
                                 {message.replyToMessage.senderType === 'staff' ? 'Staff' : 'Patient'}
                             </p>
-                            {message.replyToMessage.imageUrl ? (
+                            {message.replyToMessage.stickerUrl ? (
+                                <p className="opacity-70 italic">🎨 Sticker</p>
+                            ) : message.replyToMessage.imageUrl ? (
                                 <p className="opacity-70 italic">📷 Image</p>
                             ) : (
                                 <p className="truncate opacity-90">{message.replyToMessage.body}</p>
