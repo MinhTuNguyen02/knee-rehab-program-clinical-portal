@@ -67,30 +67,40 @@ export function MessageBubble({
                     )}
 
                     <div className="relative flex items-center w-fit max-w-full">
-                        <div
-                            className={`transition-opacity overflow-hidden ${isPending ? 'opacity-60' : 'opacity-100'} ${isOwnMessage
-                                ? `bg-primary text-white shadow-xs ${bubbleShapeClass}`
-                                : `bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs ${bubbleShapeClass}`
-                                } ${message.imageUrl && !message.body ? 'p-1' : 'px-4.5 py-2.5'}`}
-                        >
-                            {message.imageUrl && (
+                        {message.stickerUrl ? (
+                            <div className="p-1 transition-opacity">
                                 <img
-                                    src={message.imageUrl}
-                                    alt="Shared image"
-                                    className="max-w-[280px] max-h-[320px] w-auto h-auto object-cover rounded-lg cursor-zoom-in block"
-                                    style={{ display: 'block' }}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setLightboxOpen(true);
-                                    }}
+                                    src={message.stickerUrl}
+                                    alt="Sticker"
+                                    className="w-[130px] h-[130px] object-contain select-none block drop-shadow-xs hover:scale-105 transition-transform"
                                 />
-                            )}
-                            {message.body && (
-                                <p className={`whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-left text-base leading-relaxed ${message.imageUrl ? 'mt-1.5 px-2 pb-1' : ''}`}>
-                                    <Linkify options={linkifyOptions}>{message.body}</Linkify>
-                                </p>
-                            )}
-                        </div>
+                            </div>
+                        ) : (
+                            <div
+                                className={`transition-opacity overflow-hidden ${isPending ? 'opacity-60' : 'opacity-100'} ${isOwnMessage
+                                    ? `bg-primary text-white shadow-xs ${bubbleShapeClass}`
+                                    : `bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs ${bubbleShapeClass}`
+                                    } ${message.imageUrl && !message.body ? 'p-1' : 'px-4.5 py-2.5'}`}
+                            >
+                                {message.imageUrl && (
+                                    <img
+                                        src={message.imageUrl}
+                                        alt="Shared image"
+                                        className="max-w-[280px] max-h-[320px] w-auto h-auto object-cover rounded-lg cursor-zoom-in block"
+                                        style={{ display: 'block' }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setLightboxOpen(true);
+                                        }}
+                                    />
+                                )}
+                                {message.body && (
+                                    <p className={`whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-left text-base leading-relaxed ${message.imageUrl ? 'mt-1.5 px-2 pb-1' : ''}`}>
+                                        <Linkify options={linkifyOptions}>{message.body}</Linkify>
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
                         {/* Time Indicator */}
                         <span

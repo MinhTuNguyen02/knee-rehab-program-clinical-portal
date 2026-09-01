@@ -36,6 +36,7 @@ export interface ChatMessage {
     replyToMessageId?: string;
     replyToMessage?: ChatMessage;
     imageUrl?: string;
+    stickerUrl?: string;
 }
 
 export interface Conversation {
@@ -48,4 +49,21 @@ export interface Conversation {
     unreadCount: number;
     streakCount: number;
     streakActiveToday: boolean;
+}
+
+export interface StickerItem {
+    id: string;
+    packId: string;
+    url: string;
+    keyUrl?: string;
+    altText?: string;
+    sortOrder: number;
+}
+
+export interface StickerPackData {
+    id: string;
+    name: string;
+    thumbnailUrl: string;
+    sortOrder: number;
+    stickers: StickerItem[];
 }

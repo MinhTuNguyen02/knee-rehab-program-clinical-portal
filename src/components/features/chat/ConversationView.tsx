@@ -7,7 +7,8 @@ import { useStaffChat } from '@/hooks/useStaffChat';
 import { MessageBubble } from './MessageBubble';
 import { ZoneBadge } from '@/components/ui/ZoneBadge';
 import { PatientSlideOver } from '@/components/management/PatientSlideOver';
-import { Send, MessageSquare, AlertCircle, Info, ArrowLeft, ChevronDown, Smile, SmilePlus, CornerUpLeft, X, ImagePlus, Flame } from 'lucide-react';
+import { StickerPicker } from './StickerPicker';
+import { Send, MessageSquare, AlertCircle, Info, ArrowLeft, ChevronDown, Smile, SmilePlus, CornerUpLeft, X, ImagePlus, Flame, Sticker } from 'lucide-react';
 import { formatDateDivider, formatBubbleTime } from '@/lib/utils';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { EmojiClickData } from 'emoji-picker-react';
@@ -51,6 +52,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
     const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [showSlideOverPatientId, setShowSlideOverPatientId] = useState<string | null>(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showStickerPicker, setShowStickerPicker] = useState(false);
     const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
     const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
 
@@ -60,6 +62,8 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const emojiPickerRef = useRef<HTMLDivElement>(null);
     const emojiBtnRef = useRef<HTMLButtonElement>(null);
+    const stickerPickerRef = useRef<HTMLDivElement>(null);
+    const stickerBtnRef = useRef<HTMLButtonElement>(null);
     const reactionPickerRef = useRef<HTMLDivElement>(null);
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +80,23 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
             window.dispatchEvent(new Event('chat_closed'));
         };
     }, [conversation?.id]);
+
+    // Close sticker picker when clicking outside
+    useEffect(() => {
+        if (!showStickerPicker) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (
+                stickerPickerRef.current &&
+                !stickerPickerRef.current.contains(e.target as Node) &&
+                stickerBtnRef.current &&
+                !stickerBtnRef.current.contains(e.target as Node)
+            ) {
+                setShowStickerPicker(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showStickerPicker]);
 
     // Close reaction picker when clicking outside
     useEffect(() => {
@@ -739,6 +760,26 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                     </div>
                 )}
 
+                {/* Sticker Picker Popover */}
+                {showStickerPicker && (
+                    <div
+                        ref={stickerPickerRef}
+                        className="absolute bottom-full left-4 mb-2 z-50 drop-shadow-2xl"
+                    >
+                        <StickerPicker
+                            onSelectSticker={async (stickerUrl) => {
+                                setShowStickerPicker(false);
+                                try {
+                                    await sendMessage('', replyingTo || undefined, undefined, stickerUrl);
+                                    setReplyingTo(null);
+                                    scrollToBottom();
+                                } catch (err) { }
+                            }}
+                            onClose={() => setShowStickerPicker(false)}
+                        />
+                    </div>
+                )}
+
                 <div className="flex items-end gap-2 max-w-4xl mx-auto">
                     {/* Hidden file input */}
                     <input
@@ -754,7 +795,10 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                         ref={emojiBtnRef}
                         type="button"
                         aria-label="Open emoji picker"
-                        onClick={() => setShowEmojiPicker(prev => !prev)}
+                        onClick={() => {
+                            setShowEmojiPicker(prev => !prev);
+                            setShowStickerPicker(false);
+                        }}
                         className={`flex h-11 w-11 items-center justify-center rounded-xl border transition-all shrink-0 cursor-pointer
                             ${showEmojiPicker
                                 ? 'bg-primary/10 border-primary/30 text-primary'
@@ -762,6 +806,24 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                             }`}
                     >
                         <Smile className="w-5 h-5" />
+                    </button>
+
+                    {/* Sticker Button */}
+                    <button
+                        ref={stickerBtnRef}
+                        type="button"
+                        aria-label="Open sticker picker"
+                        onClick={() => {
+                            setShowStickerPicker(prev => !prev);
+                            setShowEmojiPicker(false);
+                        }}
+                        className={`flex h-11 w-11 items-center justify-center rounded-xl border transition-all shrink-0 cursor-pointer
+                            ${showStickerPicker
+                                ? 'bg-primary/10 border-primary/30 text-primary'
+                                : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700/80 text-slate-400 hover:text-primary dark:hover:text-primary'
+                            }`}
+                    >
+                        <Sticker className="w-5 h-5" />
                     </button>
 
                     {/* Image Button */}

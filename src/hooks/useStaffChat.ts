@@ -20,7 +20,7 @@ export function useStaffChat(conversationId: string | null) {
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Offline queue: stored in ref and synced to localStorage
-    const pendingQueueRef = useRef<{ id: string; body: string; client_timestamp: number; replyToMessageId?: string; imageUrl?: string }[]>([]);
+    const pendingQueueRef = useRef<{ id: string; body: string; client_timestamp: number; replyToMessageId?: string; imageUrl?: string; stickerUrl?: string }[]>([]);
     const isFlushingRef = useRef(false);
     const [flushTrigger, setFlushTrigger] = useState(0);
 
@@ -228,6 +228,7 @@ export function useStaffChat(conversationId: string | null) {
                             body: pending.body,
                             replyToMessageId: pending.replyToMessageId,
                             imageUrl: pending.imageUrl,
+                            stickerUrl: pending.stickerUrl,
                         }, (response: any) => {
                             clearTimeout(timer);
                             if (response?.id) resolve(response);
@@ -312,8 +313,8 @@ export function useStaffChat(conversationId: string | null) {
     }, [conversationId, isConnected, socket]);
 
     // 3. Send Message Logic: Only updates Optimistic UI and enqueues
-    const sendMessage = async (body: string, replyToMessage?: ChatMessage, imageUrl?: string) => {
-        if (!conversationId || (!body.trim() && !imageUrl)) return;
+    const sendMessage = async (body: string, replyToMessage?: ChatMessage, imageUrl?: string, stickerUrl?: string) => {
+        if (!conversationId || (!body.trim() && !imageUrl && !stickerUrl)) return;
 
         // Clear typing
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -334,6 +335,7 @@ export function useStaffChat(conversationId: string | null) {
             replyToMessageId: replyToMessage?.id,
             replyToMessage: replyToMessage,
             imageUrl,
+            stickerUrl,
         };
 
         // Always show optimistic message immediately
@@ -345,7 +347,8 @@ export function useStaffChat(conversationId: string | null) {
             body: body.trim(), 
             client_timestamp: clientTimestamp,
             replyToMessageId: replyToMessage?.id,
-            imageUrl 
+            imageUrl,
+            stickerUrl,
         }];
         syncQueueToStorage(pendingQueueRef.current);
 
