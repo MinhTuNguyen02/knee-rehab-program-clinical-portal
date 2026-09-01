@@ -2,6 +2,7 @@ import { fetchWithAuth } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { ZoneBadge } from "@/components/ui/ZoneBadge";
 import { LeadAssessmentsClient } from "@/components/features/LeadAssessmentsClient";
+import { StartChatButton } from "@/components/features/chat/StartChatButton";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatDate } from "@/lib/utils";
@@ -43,7 +44,7 @@ export default async function LeadDetailPage(props: { params: Promise<{ id: stri
         Back to leads
       </Link>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             {lead.firstName} {lead.lastName}
@@ -52,6 +53,9 @@ export default async function LeadDetailPage(props: { params: Promise<{ id: stri
             <CalendarBlank size={16} />
             Added on {formatDate(lead.createdAt)}
           </p>
+        </div>
+        <div>
+          <StartChatButton patientId={params.id} />
         </div>
       </div>
 

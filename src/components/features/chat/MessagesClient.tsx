@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Conversation } from '@/types/chat';
 import { ConversationList } from './ConversationList';
 import { ConversationView } from './ConversationView';
@@ -10,12 +11,15 @@ import toast from 'react-hot-toast';
 export function MessagesClient() {
     return (
         <SocketProvider>
-            <MessagesClientInner />
+            <Suspense fallback={<div className="p-4 text-slate-500">Loading messages...</div>}>
+                <MessagesClientInner />
+            </Suspense>
         </SocketProvider>
     );
 }
 
 function MessagesClientInner() {
+    const searchParams = useSearchParams();
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -34,7 +38,6 @@ function MessagesClientInner() {
             const data = await res.json();
             const list = data.data || data || [];
 
-            // Map list to keep it as Conversation[]
             setConversations(list);
         } catch (err: any) {
             console.error('Error fetching conversations:', err);
@@ -50,6 +53,32 @@ function MessagesClientInner() {
     useEffect(() => {
         fetchConversations();
     }, []);
+
+    // Handle URL parameters (conversationId or patientId)
+    useEffect(() => {
+        const queryConvId = searchParams.get('conversationId');
+        const queryPatientId = searchParams.get('patientId');
+
+        if (queryConvId) {
+            setSelectedConversationId(queryConvId);
+        } else if (queryPatientId) {
+            fetch(`/api/chat/conversations/patient/${queryPatientId}`)
+                .then(res => res.json())
+                .then(data => {
+                    const conv = data.data || data;
+                    if (conv && conv.id) {
+                        setConversations(prev => {
+                            if (!prev.some(c => c.id === conv.id)) {
+                                return [conv, ...prev];
+                            }
+                            return prev;
+                        });
+                        setSelectedConversationId(conv.id);
+                    }
+                })
+                .catch(err => console.error('Error getting/creating conversation for patient:', err));
+        }
+    }, [searchParams]);
 
     const { socket, isConnected } = useSocket();
 
@@ -71,7 +100,7 @@ function MessagesClientInner() {
             setConversations(prev => {
                 const idx = prev.findIndex(c => c.id === data.conversationId);
                 if (idx === -1) {
-                    // new conversation? Need to fetch to get patient details
+                    // new conversation? Fetch to get full details
                     fetchConversations(true);
                     return prev;
                 }
@@ -80,14 +109,11 @@ function MessagesClientInner() {
                 updatedConv.lastMessage = data.lastMessage;
                 updatedConv.lastMessageAt = data.lastMessage.sentAt;
 
-                // If it's from patient and we don't have it selected, increment unread count
                 if (data.lastMessage.senderType === 'patient' && data.conversationId !== selectedConversationId) {
                     updatedConv.unreadCount = (updatedConv.unreadCount || 0) + 1;
                 }
 
                 updatedList[idx] = updatedConv;
-
-                // re-sort by lastMessageAt
                 updatedList.sort((a, b) => new Date(b.lastMessageAt || b.createdAt).getTime() - new Date(a.lastMessageAt || a.createdAt).getTime());
 
                 return updatedList;
@@ -152,14 +178,11 @@ function MessagesClientInner() {
         };
     }, []);
 
-    // Find the currently selected conversation
     const selectedConversation = conversations.find(c => c.id === selectedConversationId) || null;
 
-    // Handle mark as read when selecting conversation
     const handleSelectConversation = (id: string) => {
         setSelectedConversationId(id);
 
-        // Reset unread count locally for immediate response
         setConversations(prev =>
             prev.map(c => (c.id === id ? { ...c, unreadCount: 0 } : c))
         );
@@ -171,7 +194,6 @@ function MessagesClientInner() {
 
     return (
         <div className="-mx-4 -mt-4 sm:mx-0 sm:mt-0">
-
             <div className="mx-auto flex h-[calc(100dvh-4rem)] sm:h-[calc(100vh-10rem)] md:h-[calc(100vh-11rem)] bg-white dark:bg-slate-900 rounded-none sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-none sm:shadow-sm overflow-hidden animate-in fade-in duration-200">
                 {/* Conversation List Column */}
                 <div className={`${selectedConversationId ? 'hidden md:block' : 'w-full'} md:w-[320px] shrink-0 h-full`}>

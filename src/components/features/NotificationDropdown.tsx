@@ -33,9 +33,18 @@ export default function NotificationDropdown() {
         if (!notification.readAt) {
             await markAsRead(notification.id);
         }
-        // Keep isOpen state as preferred by user
-        const targetLink = notification.payload?.link;
+
+        const payloadObj = typeof notification.payload === 'string'
+            ? JSON.parse(notification.payload)
+            : (notification.payload || {});
+
+        const conversationId = payloadObj.conversationId;
+        const targetLink = conversationId
+            ? `/messages?conversationId=${conversationId}`
+            : (payloadObj.link && payloadObj.link !== '#' ? payloadObj.link : '/messages');
+
         if (targetLink && targetLink !== '#') {
+            setIsOpen(false);
             router.push(targetLink);
         }
     };

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { X, UserCircle, EnvelopeSimple, Phone, CalendarBlank, GenderIntersex, WarningCircle, CheckCircle } from "@phosphor-icons/react";
+import { X, UserCircle, EnvelopeSimple, Phone, CalendarBlank, GenderIntersex, WarningCircle, CheckCircle, ChatCircleText } from "@phosphor-icons/react";
 import { LeadAssessmentsClient } from "@/components/features/LeadAssessmentsClient";
 import { formatDate } from "@/lib/utils";
+import toast from "react-hot-toast";
 
 interface PatientSlideOverProps {
   patientId: string | null;
@@ -12,12 +14,35 @@ interface PatientSlideOverProps {
 }
 
 export function PatientSlideOver({ patientId, onClose }: PatientSlideOverProps) {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const [activePatientId, setActivePatientId] = useState<string | null>(null);
   const [patient, setPatient] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [startingChat, setStartingChat] = useState(false);
+
+  const handleStartChat = async () => {
+    if (!activePatientId) return;
+    setStartingChat(true);
+    try {
+      const res = await fetch(`/api/chat/conversations/patient/${activePatientId}`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error?.message || "Failed to start conversation.");
+      }
+      setVisible(false);
+      setTimeout(() => {
+        onClose();
+        router.push(`/messages?patientId=${activePatientId}`);
+      }, 200);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to start chat.");
+    } finally {
+      setStartingChat(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -125,16 +150,28 @@ export function PatientSlideOver({ patientId, onClose }: PatientSlideOverProps) 
                 </p>
               )}
             </div>
-            <button
-              onClick={() => {
-                setVisible(false);
-                setTimeout(onClose, 300);
-              }}
-              className="p-2 -mr-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-slate-350"
-              aria-label="Close panel"
-            >
-              <X size={20} weight="bold" />
-            </button>
+            <div className="flex items-center gap-3">
+              {patient && !loading && (
+                <button
+                  onClick={handleStartChat}
+                  disabled={startingChat}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary-hover shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  <ChatCircleText size={16} weight="bold" />
+                  <span>{startingChat ? "Opening Chat..." : "Chat with Patient"}</span>
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setVisible(false);
+                  setTimeout(onClose, 300);
+                }}
+                className="p-2 -mr-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-slate-350"
+                aria-label="Close panel"
+              >
+                <X size={20} weight="bold" />
+              </button>
+            </div>
           </div>
 
           {/* Drawer Body Scroll Container */}
