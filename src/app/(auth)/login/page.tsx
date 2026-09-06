@@ -70,8 +70,8 @@ function LoginForm() {
           const backendFieldErrors: typeof fieldErrors = {};
           let genericError: string | null = null;
 
-          errorMsgs.forEach((msg: string) => {
-            const lowercaseMsg = msg.toLowerCase();
+          for (const msg of errorMsgs) {
+            const lowercaseMsg = String(msg).toLowerCase();
             if (lowercaseMsg.includes("email")) {
               backendFieldErrors.email = msg;
             } else if (lowercaseMsg.includes("password")) {
@@ -79,13 +79,23 @@ function LoginForm() {
             } else {
               genericError = msg;
             }
-          });
+          }
 
           if (Object.keys(backendFieldErrors).length > 0) {
             setFieldErrors(backendFieldErrors);
           }
           if (genericError) {
-            setError(genericError);
+            const errMsg: string = String(genericError);
+            setError(errMsg);
+            const lower = errMsg.toLowerCase();
+            if (
+              res.status === 403 ||
+              lower.includes("deactivated") ||
+              lower.includes("vô hiệu hóa") ||
+              lower.includes("disabled")
+            ) {
+              toast.error(errMsg);
+            }
           }
         } else {
           toast.success("Welcome back!");

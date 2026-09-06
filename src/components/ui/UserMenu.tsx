@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UserPlus, LogOut, ChevronDown, Key, Shield, UserCheck } from 'lucide-react';
+import { LogOut, ChevronDown, Key, Shield, UserCheck } from 'lucide-react';
 
 export default function UserMenu() {
     const [isOpen, setIsOpen] = useState(false);
@@ -163,19 +163,6 @@ export default function UserMenu() {
                         <Key className="w-4 h-4 text-gray-400" />
                         <span>Change Password</span>
                     </Link>
-
-                    {/* Only show Create Staff to Admin users */}
-                    {isAdmin && (
-                        <Link
-                            href="/create-staff"
-                            onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary focus-visible:bg-gray-50 dark:focus-visible:bg-gray-800"
-                            aria-label="Create Staff"
-                        >
-                            <UserPlus className="w-4 h-4 text-gray-400" />
-                            <span>Create Staff</span>
-                        </Link>
-                    )}
 
                     <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
 

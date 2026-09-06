@@ -311,11 +311,11 @@ export default function CreateStaffPage() {
 
                     <div className="flex justify-center pt-2">
                         <Link
-                            href="/dashboard"
+                            href="/staff"
                             className="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors"
                         >
                             <ArrowLeft className="w-4 h-4" />
-                            Back to Dashboard
+                            Back to Staff Management
                         </Link>
                     </div>
                 </form>

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, Users, ClipboardList, List, X, MessagesSquare } from "lucide-react";
+import { Activity, Users, ClipboardList, List, X, MessagesSquare, UserCog } from "lucide-react";
 import { useTransition } from "react";
 import UserMenu from "@/components/ui/UserMenu";
 import NotificationDropdown from "@/components/features/NotificationDropdown";
@@ -14,15 +14,28 @@ export default function PortalLayout({
   children: React.ReactNode;
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.role) {
+          setUserRole(data.role);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: Activity },
     { name: "Leads", href: "/leads", icon: Users },
     { name: "Assessments", href: "/assessments", icon: ClipboardList },
     { name: "Messages", href: "/messages", icon: MessagesSquare },
+    ...(userRole === "admin" ? [{ name: "Staff", href: "/staff", icon: UserCog }] : []),
   ];
 
   return (
