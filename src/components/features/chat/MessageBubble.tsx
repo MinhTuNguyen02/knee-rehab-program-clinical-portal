@@ -15,6 +15,7 @@ interface MessageBubbleProps {
     onToggleReaction: (emoji: string) => void;
     onReplyClick?: () => void;
     patientId: string;
+    isHighlighted?: boolean;
 }
 
 export function MessageBubble({
@@ -27,7 +28,8 @@ export function MessageBubble({
     onToggleTime,
     onToggleReaction,
     onReplyClick,
-    patientId
+    patientId,
+    isHighlighted
 }: MessageBubbleProps) {
     const isPending = message.isPending;
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -68,7 +70,7 @@ export function MessageBubble({
                         </div>
                     )}
 
-                    <div className="relative flex items-center w-fit max-w-full">
+                    <div className={`relative flex items-center w-fit max-w-full rounded-2xl transition-all duration-500 ${isHighlighted ? 'ring-4 ring-amber-400 dark:ring-amber-500 shadow-lg scale-[1.02] animate-pulse' : ''}`}>
                         {message.stickerUrl ? (
                             <div className="p-1 transition-opacity">
                                 <img

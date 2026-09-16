@@ -8,7 +8,8 @@ import { MessageBubble } from './MessageBubble';
 import { ZoneBadge } from '@/components/ui/ZoneBadge';
 import { PatientSlideOver } from '@/components/management/PatientSlideOver';
 import { StickerPicker } from './StickerPicker';
-import { Send, MessageSquare, AlertCircle, Info, ArrowLeft, ChevronDown, Smile, SmilePlus, CornerUpLeft, X, ImagePlus, Flame, Sticker } from 'lucide-react';
+import { ChatMediaDrawer } from './ChatMediaDrawer';
+import { Send, MessageSquare, AlertCircle, Info, ArrowLeft, ChevronDown, Smile, SmilePlus, CornerUpLeft, X, ImagePlus, Flame, Sticker, Images } from 'lucide-react';
 import { formatDateDivider, formatBubbleTime } from '@/lib/utils';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { EmojiClickData } from 'emoji-picker-react';
@@ -42,7 +43,8 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
         emitTyping,
         sendMessage,
         loadMore,
-        toggleReaction
+        toggleReaction,
+        setMessages,
     } = useStaffChat(conversation ? conversation.id : null);
 
     const [inputText, setInputText] = useState('');
@@ -51,6 +53,8 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null); // local preview
     const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [showSlideOverPatientId, setShowSlideOverPatientId] = useState<string | null>(null);
+    const [showMediaDrawer, setShowMediaDrawer] = useState(false);
+    const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showStickerPicker, setShowStickerPicker] = useState(false);
     const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
@@ -230,12 +234,53 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
         }
     };
 
-    const scrollToMessage = (messageId: string) => {
-        const index = flatItems.findIndex(item => item.id === messageId);
-        if (index !== -1) {
-            virtualizer.scrollToIndex(index, { align: 'center', behavior: 'smooth' });
-            // add a highlight effect? Can do this by setting a state or just let the user see it centered
+    const scrollToMessage = async (target: string | ChatMessage) => {
+        const messageId = typeof target === 'string' ? target : target.id;
+        const targetMessage = typeof target === 'object' ? target : messages.find(m => m.id === messageId);
+
+        let index = flatItems.findIndex(item => item.id === messageId);
+
+        // If message is not yet loaded in chat, fetch older messages around its timestamp
+        if (index === -1 && targetMessage && conversation?.id) {
+            const targetTime = targetMessage.client_timestamp || new Date(targetMessage.sentAt).getTime();
+            try {
+                const res = await fetch(`/api/chat/conversations/${conversation.id}/messages?before=${targetTime + 15000}&limit=40`);
+                const data = await res.json();
+                if (res.ok && data.data && data.data.length > 0) {
+                    const olderMsgs: ChatMessage[] = data.data;
+                    setMessages(prev => {
+                        const existingIds = new Set(prev.map(m => m.id));
+                        const uniqueOlder = olderMsgs.filter(m => !existingIds.has(m.id)).reverse();
+                        return [...uniqueOlder, ...prev];
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to load older messages for jump:', err);
+            }
         }
+
+        // Wait for state updates and DOM elements to settle
+        setTimeout(() => {
+            const finalIndex = flatItems.findIndex(item => item.id === messageId);
+            if (finalIndex !== -1) {
+                // Instantly mount target row in virtualizer
+                virtualizer.scrollToIndex(finalIndex, { align: 'center', behavior: 'auto' });
+
+                // Smoothly center the element once mounted
+                requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        const el = document.getElementById(`msg-${messageId}`);
+                        if (el) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                        setHighlightedMessageId(messageId);
+                        setTimeout(() => {
+                            setHighlightedMessageId(curr => curr === messageId ? null : curr);
+                        }, 2500);
+                    }, 60);
+                });
+            }
+        }, 120);
     };
 
     const lastItemId = flatItems.length > 0 ? flatItems[flatItems.length - 1].id : null;
@@ -428,6 +473,15 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                     )}
 
                     <button
+                        onClick={() => setShowMediaDrawer(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+                        title="Shared photos"
+                    >
+                        <Images className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                        <span className="hidden sm:block">Photos</span>
+                    </button>
+
+                    <button
                         onClick={() => setShowSlideOverPatientId(conversation.patientId)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
                     >
@@ -498,6 +552,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                                 return (
                                     <div
                                         key={virtualRow.key}
+                                        id={item.type === 'message' ? `msg-${item.id}` : undefined}
                                         data-index={virtualRow.index}
                                         ref={measureRef}
                                         style={{
@@ -638,6 +693,7 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
                                                             }
                                                         }}
                                                         patientId={conversation?.patientId || ''}
+                                                        isHighlighted={highlightedMessageId === item.id}
                                                     />
                                                 </div>
                                             </div>
@@ -859,6 +915,14 @@ export function ConversationView({ conversation, isPatientOnline, onBack }: Conv
             </form>
 
             <PatientSlideOver patientId={showSlideOverPatientId} onClose={() => setShowSlideOverPatientId(null)} />
+
+            <ChatMediaDrawer
+                isOpen={showMediaDrawer}
+                onClose={() => setShowMediaDrawer(false)}
+                conversationId={conversation.id}
+                patientName={patientName}
+                onJumpToMessage={scrollToMessage}
+            />
         </div>
     );
 }

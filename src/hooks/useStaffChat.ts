@@ -418,5 +418,6 @@ export function useStaffChat(conversationId: string | null) {
         loadMore,
         markAsRead,
         toggleReaction,
+        setMessages,
     };
 }
